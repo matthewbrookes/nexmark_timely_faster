@@ -1,15 +1,15 @@
 use std::rc::Rc;
-use timely::dataflow::{Scope, Stream};
 use timely::dataflow::operators::capture::event::link::EventLink;
 use timely::dataflow::operators::capture::Replay;
+use timely::dataflow::{Scope, Stream};
 
-use crate::event::{Bid, Auction, Person, Date};
+use crate::event::{Auction, Bid, Date, Person};
 
 mod q1;
 mod q2;
 mod q3;
-mod q4_q6_common;
 mod q4;
+mod q4_q6_common;
 mod q5;
 mod q6;
 mod q7;
@@ -18,8 +18,8 @@ mod q8;
 pub use self::q1::q1;
 pub use self::q2::q2;
 pub use self::q3::q3;
-pub use self::q4_q6_common::q4_q6_common;
 pub use self::q4::q4;
+pub use self::q4_q6_common::q4_q6_common;
 pub use self::q5::q5;
 pub use self::q6::q6;
 pub use self::q7::q7;
@@ -41,44 +41,52 @@ impl<'a> NexmarkInput<'a> {
     }
     */
 
-    pub fn bids<S: Scope<Timestamp=usize>>(&self, scope: &mut S) -> Stream<S, Bid> {
+    pub fn bids<S: Scope<Timestamp = usize>>(&self, scope: &mut S) -> Stream<S, Bid> {
         Some(self.bids.clone()).replay_into(scope)
     }
 
-    pub fn auctions<S: Scope<Timestamp=usize>>(&self, scope: &mut S) -> Stream<S, Auction> {
+    pub fn auctions<S: Scope<Timestamp = usize>>(&self, scope: &mut S) -> Stream<S, Auction> {
         Some(self.auctions.clone()).replay_into(scope)
     }
 
-    pub fn people<S: Scope<Timestamp=usize>>(&self, scope: &mut S) -> Stream<S, Person> {
+    pub fn people<S: Scope<Timestamp = usize>>(&self, scope: &mut S) -> Stream<S, Person> {
         Some(self.people.clone()).replay_into(scope)
     }
 
-    pub fn closed_auctions<S: Scope<Timestamp=usize>>(&self, scope: &mut S) -> Stream<S, (Auction, Bid)> {
+    pub fn closed_auctions<S: Scope<Timestamp = usize>>(
+        &self,
+        scope: &mut S,
+    ) -> Stream<S, (Auction, Bid)> {
         Some(self.closed_auctions.clone()).replay_into(scope)
     }
 
-    pub fn closed_auctions_flex<S: Scope<Timestamp=usize>>(&self, scope: &mut S) -> Stream<S, (Auction, Bid)> {
+    pub fn closed_auctions_flex<S: Scope<Timestamp = usize>>(
+        &self,
+        scope: &mut S,
+    ) -> Stream<S, (Auction, Bid)> {
         Some(self.closed_auctions_flex.clone()).replay_into(scope)
     }
 }
 
-
 #[derive(Copy, Clone)]
 pub struct NexmarkTimer {
-    pub time_dilation: usize
+    pub time_dilation: usize,
 }
 
 impl NexmarkTimer {
-
     #[inline(always)]
-    fn to_nexmark_time (self, x: usize) -> Date {
-        debug_assert!(x.checked_mul(self.time_dilation).is_some(), "multiplication failed: {} * {}", x, self.time_dilation);
+    fn to_nexmark_time(self, x: usize) -> Date {
+        debug_assert!(
+            x.checked_mul(self.time_dilation).is_some(),
+            "multiplication failed: {} * {}",
+            x,
+            self.time_dilation
+        );
         Date::new(x * self.time_dilation)
     }
 
     #[inline(always)]
-    fn from_nexmark_time(self, x: Date) -> usize{
+    fn from_nexmark_time(self, x: Date) -> usize {
         *x / self.time_dilation
     }
-
 }

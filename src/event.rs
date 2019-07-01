@@ -1,7 +1,8 @@
-use rand::Rng;
-use rand::rngs::SmallRng;
-use std::cmp::{max, min};
 use faster_rs::FasterValue;
+use rand::rngs::SmallRng;
+use rand::seq::SliceRandom;
+use rand::Rng;
+use std::cmp::{max, min};
 
 use crate::config::NEXMarkConfig;
 
@@ -31,7 +32,20 @@ impl NEXMarkRng for SmallRng {
 }
 
 type Id = usize;
-#[derive(Eq, PartialEq, Ord, PartialOrd, Clone, Serialize, Deserialize, Debug, Abomonation, Hash, Copy, Default)]
+#[derive(
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Clone,
+    Serialize,
+    Deserialize,
+    Debug,
+    Abomonation,
+    Hash,
+    Copy,
+    Default,
+)]
 pub struct Date(usize);
 
 impl Date {
@@ -83,7 +97,6 @@ pub enum Event {
 }
 
 impl Event {
-
     pub fn time(&self) -> Date {
         match *self {
             Event::Person(ref p) => p.date_time,
@@ -110,7 +123,7 @@ impl Event {
         match *self {
             Event::Person(ref p) => p.id,
             Event::Auction(ref a) => a.id,
-            Event::Bid(ref b) => b.auction,    // Bid eventss don't have ids, so use the associated auction id
+            Event::Bid(ref b) => b.auction, // Bid eventss don't have ids, so use the associated auction id
         }
     }
 
@@ -150,15 +163,17 @@ impl Event {
 //     }
 // }
 
-#[derive(Eq, PartialEq,  Ord, PartialOrd, Clone, Serialize, Deserialize, Debug, Abomonation, Hash)]
-pub struct Person{
+#[derive(
+    Eq, PartialEq, Ord, PartialOrd, Clone, Serialize, Deserialize, Debug, Abomonation, Hash,
+)]
+pub struct Person {
     pub id: Id,
     pub name: String,
     pub email_address: String,
     pub credit_card: String,
     pub city: String,
     pub state: String,
-    pub date_time: Date
+    pub date_time: Date,
 }
 
 impl FasterValue for Person {
@@ -171,7 +186,7 @@ impl Person {
     pub fn from(event: Event) -> Option<Person> {
         match event {
             Event::Person(p) => Some(p),
-            _ => None
+            _ => None,
         }
     }
 
@@ -181,14 +196,14 @@ impl Person {
             name: String::new(),
             email_address: String::new(),
             credit_card: String::new(),
-// FIXME: Figure out a faster way to allocate the strings MH
-//            name: format!("{} {}",
-//                          *rng.choose(&nex.first_names).unwrap(),
-//                          *rng.choose(&nex.last_names).unwrap()),
-//            email_address: format!("{}@{}.com", rng.gen_string(7), rng.gen_string(5)),
-//            credit_card: (0..4).map(|_| format!("{:04}", rng.gen_range(0, 10000))).collect::<Vec<String>>().join(" "),
-            city: rng.choose(&nex.us_cities).unwrap().clone(),
-            state: rng.choose(&nex.us_states).unwrap().clone(),
+            // FIXME: Figure out a faster way to allocate the strings MH
+            //            name: format!("{} {}",
+            //                          *rng.choose(&nex.first_names).unwrap(),
+            //                          *rng.choose(&nex.last_names).unwrap()),
+            //            email_address: format!("{}@{}.com", rng.gen_string(7), rng.gen_string(5)),
+            //            credit_card: (0..4).map(|_| format!("{:04}", rng.gen_range(0, 10000))).collect::<Vec<String>>().join(" "),
+            city: nex.us_cities.choose(rng).unwrap().clone(),
+            state: nex.us_states.choose(rng).unwrap().clone(),
             date_time: time,
         }
     }
@@ -202,13 +217,17 @@ impl Person {
     fn last_id(id: usize, nex: &NEXMarkConfig) -> Id {
         let epoch = id / nex.proportion_denominator;
         let mut offset = id % nex.proportion_denominator;
-        if nex.person_proportion <= offset { offset = nex.person_proportion - 1; }
+        if nex.person_proportion <= offset {
+            offset = nex.person_proportion - 1;
+        }
         epoch * nex.person_proportion + offset
     }
 }
 
-#[derive(Eq, PartialEq, Ord, PartialOrd, Clone, Serialize, Deserialize, Debug, Abomonation, Hash)]
-pub struct Auction{
+#[derive(
+    Eq, PartialEq, Ord, PartialOrd, Clone, Serialize, Deserialize, Debug, Abomonation, Hash,
+)]
+pub struct Auction {
     pub id: Id,
     pub item_name: String,
     pub description: String,
@@ -225,11 +244,17 @@ impl Auction {
     pub fn from(event: Event) -> Option<Auction> {
         match event {
             Event::Auction(p) => Some(p),
-            _ => None
+            _ => None,
         }
     }
 
-    fn new(events_so_far: usize, id: usize, time: Date, rng: &mut SmallRng, nex: &NEXMarkConfig) -> Self {
+    fn new(
+        events_so_far: usize,
+        id: usize,
+        time: Date,
+        rng: &mut SmallRng,
+        nex: &NEXMarkConfig,
+    ) -> Self {
         let initial_bid = rng.gen_price();
         let seller = if rng.gen_range(0, nex.hot_seller_ratio) > 0 {
             (Person::last_id(id, nex) / nex.hot_seller_ratio_2) * nex.hot_seller_ratio_2
@@ -251,7 +276,11 @@ impl Auction {
 
     fn next_id(id: usize, rng: &mut SmallRng, nex: &NEXMarkConfig) -> Id {
         let max_auction = Self::last_id(id, nex);
-        let min_auction = if max_auction < nex.in_flight_auctions { 0 } else { max_auction - nex.in_flight_auctions };
+        let min_auction = if max_auction < nex.in_flight_auctions {
+            0
+        } else {
+            max_auction - nex.in_flight_auctions
+        };
         min_auction + rng.gen_range(0, max_auction - min_auction + 1 + nex.auction_id_lead)
     }
 
@@ -269,18 +298,26 @@ impl Auction {
         epoch * nex.auction_proportion + offset
     }
 
-    fn next_length(events_so_far: usize, rng: &mut SmallRng, time: Date, nex: &NEXMarkConfig) -> Date {
+    fn next_length(
+        events_so_far: usize,
+        rng: &mut SmallRng,
+        time: Date,
+        nex: &NEXMarkConfig,
+    ) -> Date {
         let current_event = nex.next_adjusted_event(events_so_far);
-        let events_for_auctions = (nex.in_flight_auctions * nex.proportion_denominator) / nex.auction_proportion;
-        let future_auction = nex.event_timestamp_ns(current_event+events_for_auctions);
+        let events_for_auctions =
+            (nex.in_flight_auctions * nex.proportion_denominator) / nex.auction_proportion;
+        let future_auction = nex.event_timestamp_ns(current_event + events_for_auctions);
 
         let horizon = future_auction - time.0;
         Date(1 + rng.gen_range(0, max(horizon * 2, 1)))
     }
 }
 
-#[derive(Eq, PartialEq, Ord, PartialOrd, Clone, Serialize, Deserialize, Debug, Abomonation, Hash)]
-pub struct Bid{
+#[derive(
+    Eq, PartialEq, Ord, PartialOrd, Clone, Serialize, Deserialize, Debug, Abomonation, Hash,
+)]
+pub struct Bid {
     pub auction: Id,
     pub bidder: Id,
     pub price: usize,
@@ -292,12 +329,12 @@ impl Bid {
     pub fn from(event: Event) -> Option<Bid> {
         match event {
             Event::Bid(p) => Some(p),
-            _ => None
+            _ => None,
         }
     }
 
     fn new(id: usize, time: Date, rng: &mut SmallRng, nex: &NEXMarkConfig) -> Self {
-        let auction = if 0 < rng.gen_range(0, nex.hot_auction_ratio){
+        let auction = if 0 < rng.gen_range(0, nex.hot_auction_ratio) {
             (Auction::last_id(id, nex) / nex.hot_auction_ratio_2) * nex.hot_auction_ratio_2
         } else {
             Auction::next_id(id, rng, nex)

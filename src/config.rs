@@ -1,16 +1,18 @@
-use std::io::{Result, Error, ErrorKind};
 use std::collections::HashMap;
+use std::io::{Error, ErrorKind, Result};
 use std::str::FromStr;
 
 /// This is a simple command line options parser.
 #[derive(Clone, Default)]
 pub struct Config {
-    args: HashMap<String, String>
+    args: HashMap<String, String>,
 }
 
 impl Config {
     pub fn new() -> Self {
-        Config{ args: HashMap::new() }
+        Config {
+            args: HashMap::new(),
+        }
     }
 
     /// Parses the command line arguments into a new Config object.
@@ -21,21 +23,21 @@ impl Config {
     ///   Otherwise the argument is used as the next positional value, counting
     ///   from zero.
     ///
-    pub fn from<I: Iterator<Item=String>>(mut cmd_args: I) -> Result<Self> {
+    pub fn from<I: Iterator<Item = String>>(mut cmd_args: I) -> Result<Self> {
         let mut args = HashMap::new();
         let mut i = 0;
         while let Some(arg) = cmd_args.next() {
             if arg.starts_with("--") {
                 match cmd_args.next() {
                     Some(value) => args.insert(format!("{}", &arg[2..]), value),
-                    None => return Err(Error::new(ErrorKind::Other, "No corresponding value."))
+                    None => return Err(Error::new(ErrorKind::Other, "No corresponding value.")),
                 };
             } else {
                 args.insert(format!("{}", i), arg);
-                i = i+1;
+                i = i + 1;
             }
         }
-        Ok(Config{ args: args })
+        Ok(Config { args: args })
     }
 
     /// Inserts the given value for the given key.
@@ -58,7 +60,9 @@ impl Config {
 
     /// Returns the value for the given key or a default value if the key does not exist.
     pub fn get_or(&self, key: &str, default: &str) -> String {
-        self.args.get(key).map_or(String::from(default), |x| x.clone())
+        self.args
+            .get(key)
+            .map_or(String::from(default), |x| x.clone())
     }
 
     /// Returns the value for the given key automatically parsed, or a default value if the key does not exist.
@@ -66,8 +70,6 @@ impl Config {
         self.get_as(key).unwrap_or(default)
     }
 }
-
-
 
 use std::f64::consts::PI;
 
@@ -143,7 +145,7 @@ pub struct NEXMarkConfig {
 }
 
 impl NEXMarkConfig {
-    pub fn new(config: &Config) -> Self{
+    pub fn new(config: &Config) -> Self {
         let active_people = config.get_as_or("active-people", 1000);
         let in_flight_auctions = config.get_as_or("in-flight-auctions", 100);
         let out_of_order_group_size = config.get_as_or("out-of-order-group-size", 1);
@@ -160,7 +162,7 @@ impl NEXMarkConfig {
         let person_proportion = config.get_as_or("person-proportion", 1);
         let auction_proportion = config.get_as_or("auction-proportion", 3);
         let bid_proportion = config.get_as_or("bid-proportion", 46);
-        let proportion_denominator = person_proportion+auction_proportion+bid_proportion;
+        let proportion_denominator = person_proportion + auction_proportion + bid_proportion;
         let first_auction_id = config.get_as_or("first-auction-id", 1000);
         let first_person_id = config.get_as_or("first-person-id", 1000);
         let first_category_id = config.get_as_or("first-category-id", 10);
@@ -168,12 +170,28 @@ impl NEXMarkConfig {
         let sine_approx_steps = config.get_as_or("sine-approx-steps", 10);
         let base_time_ns = config.get_as_or("base-time", BASE_TIME);
         let us_states = split_string_arg(config.get_or("us-states", "AZ,CA,ID,OR,WA,WY"));
-        let us_cities = split_string_arg(config.get_or("us-cities", "phoenix,los angeles,san francisco,boise,portland,bend,redmond,seattle,kent,cheyenne"));
-        let first_names = split_string_arg(config.get_or("first-names", "peter,paul,luke,john,saul,vicky,kate,julie,sarah,deiter,walter"));
-        let last_names = split_string_arg(config.get_or("last-names", "shultz,abrams,spencer,white,bartels,walton,smith,jones,noris"));
-        let rate_shape = if config.get_or("rate-shape", "sine") == "sine"{ RateShape::Sine }else{ RateShape::Square };
+        let us_cities = split_string_arg(config.get_or(
+            "us-cities",
+            "phoenix,los angeles,san francisco,boise,portland,bend,redmond,seattle,kent,cheyenne",
+        ));
+        let first_names = split_string_arg(config.get_or(
+            "first-names",
+            "peter,paul,luke,john,saul,vicky,kate,julie,sarah,deiter,walter",
+        ));
+        let last_names = split_string_arg(config.get_or(
+            "last-names",
+            "shultz,abrams,spencer,white,bartels,walton,smith,jones,noris",
+        ));
+        let rate_shape = if config.get_or("rate-shape", "sine") == "sine" {
+            RateShape::Sine
+        } else {
+            RateShape::Square
+        };
         let rate_period = config.get_as_or("rate-period", 600);
-        let first_rate = config.get_as_or("first-event-rate", config.get_as_or("events-per-second", 1_000));
+        let first_rate = config.get_as_or(
+            "first-event-rate",
+            config.get_as_or("events-per-second", 1_000),
+        );
         let next_rate = config.get_as_or("next-event-rate", first_rate);
         let ns_per_unit = config.get_as_or("us-per-unit", 1_000_000_000); // Rate is in μs
         let generators = config.get_as_or("threads", 1) as f64;
@@ -187,20 +205,25 @@ impl NEXMarkConfig {
                 RateShape::Square => {
                     inter_event_delays_ns.push(rate_to_period(first_rate) * generators);
                     inter_event_delays_ns.push(rate_to_period(next_rate) * generators);
-                },
+                }
                 RateShape::Sine => {
                     let mid = (first_rate + next_rate) as f64 / 2.0;
                     let amp = (first_rate - next_rate) as f64 / 2.0;
                     for i in 0..sine_approx_steps {
                         let r = (2.0 * PI * i as f64) / sine_approx_steps as f64;
                         let rate = mid + amp * r.cos();
-                        inter_event_delays_ns.push(rate_to_period(rate.round() as usize) * generators);
+                        inter_event_delays_ns
+                            .push(rate_to_period(rate.round() as usize) * generators);
                     }
                 }
             }
         }
         // Calculate events per epoch and epoch period.
-        let n = if rate_shape == RateShape::Square { 2 } else { sine_approx_steps };
+        let n = if rate_shape == RateShape::Square {
+            2
+        } else {
+            sine_approx_steps
+        };
         let step_length = (rate_period + n - 1) / n;
         let events_per_epoch = 0;
         let epoch_period = 0.0;
@@ -251,7 +274,8 @@ impl NEXMarkConfig {
     ///
     pub fn event_timestamp_ns(&self, event_number: usize) -> usize {
         // if self.inter_event_delays.len() == 1 {
-            return self.base_time_ns + ((event_number as f64 * self.inter_event_delays_ns[0]) as usize);
+        return self.base_time_ns
+            + ((event_number as f64 * self.inter_event_delays_ns[0]) as usize);
         // }
 
         // let epoch = event_number / self.events_per_epoch;
@@ -300,8 +324,10 @@ impl NexMarkInputTimes {
     }
 
     fn make_next(&mut self) {
-        let ts = self.config.event_timestamp_ns(
-            self.config.next_adjusted_event(self.events_so_far)) as u64;
+        let ts = self
+            .config
+            .event_timestamp_ns(self.config.next_adjusted_event(self.events_so_far))
+            as u64;
         let ts = ts / self.time_dilation as u64;
         if ts < self.end {
             self.events_so_far += self.peers;
@@ -331,4 +357,3 @@ impl ::streaming_harness::input::InputTimeResumableIterator<u64> for NexMarkInpu
         self.next.is_none()
     }
 }
-

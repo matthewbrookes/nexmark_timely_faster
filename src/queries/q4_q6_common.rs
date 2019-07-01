@@ -1,15 +1,17 @@
-
 use std::collections::HashMap;
-use timely::dataflow::{Scope, Stream};
 use timely::dataflow::channels::pact::Exchange;
 use timely::dataflow::operators::{Capability, Operator};
+use timely::dataflow::{Scope, Stream};
 
 use crate::event::{Auction, Bid};
 
 use {crate::queries::NexmarkInput, crate::queries::NexmarkTimer};
 
-pub fn q4_q6_common<S: Scope<Timestamp=usize>>(input: &NexmarkInput, nt: NexmarkTimer, scope: &mut S) -> Stream<S, (Auction, Bid)>
-{
+pub fn q4_q6_common<S: Scope<Timestamp = usize>>(
+    input: &NexmarkInput,
+    nt: NexmarkTimer,
+    scope: &mut S,
+) -> Stream<S, (Auction, Bid)> {
     let bids = input.bids(scope);
     let auctions = input.auctions(scope);
 
@@ -23,21 +25,22 @@ pub fn q4_q6_common<S: Scope<Timestamp=usize>>(input: &NexmarkInput, nt: Nexmark
             let mut opens = std::collections::BinaryHeap::new();
 
             let mut capability: Option<Capability<usize>> = None;
-            use std::collections::hash_map::Entry;
             use std::cmp::Reverse;
+            use std::collections::hash_map::Entry;
 
             fn is_valid_bid(bid: &Bid, auction: &Auction) -> bool {
-                bid.price >= auction.reserve && auction.date_time <= bid.date_time && bid.date_time < auction.expires
+                bid.price >= auction.reserve
+                    && auction.date_time <= bid.date_time
+                    && bid.date_time < auction.expires
             }
 
             move |input1, input2, output| {
-
                 // Record each bid.
                 // NB: We don't summarize as the max, because we don't know which are valid.
                 input1.for_each(|time, data| {
                     for bid in data.iter().cloned() {
-//                                        eprintln!("[{:?}] bid: {:?}", time.time().inner, bid);
-                        let mut entry = state.entry(bid.auction).or_insert((None, Vec::new()));
+                        //                                        eprintln!("[{:?}] bid: {:?}", time.time().inner, bid);
+                        let entry = state.entry(bid.auction).or_insert((None, Vec::new()));
                         if let Some(ref auction) = entry.0 {
                             debug_assert!(entry.1.len() <= 1);
                             if is_valid_bid(&bid, auction) {
@@ -52,8 +55,13 @@ pub fn q4_q6_common<S: Scope<Timestamp=usize>>(input: &NexmarkInput, nt: Nexmark
                             }
                         } else {
                             opens.push((Reverse(bid.date_time), bid.auction));
-                            if capability.as_ref().map(|c| nt.to_nexmark_time(*c.time()) <= bid.date_time) != Some(true) {
-                                capability = Some(time.delayed(&nt.from_nexmark_time(bid.date_time)));
+                            if capability
+                                .as_ref()
+                                .map(|c| nt.to_nexmark_time(*c.time()) <= bid.date_time)
+                                != Some(true)
+                            {
+                                capability =
+                                    Some(time.delayed(&nt.from_nexmark_time(bid.date_time)));
                             }
                             entry.1.push(bid);
                         }
@@ -63,8 +71,12 @@ pub fn q4_q6_common<S: Scope<Timestamp=usize>>(input: &NexmarkInput, nt: Nexmark
                 // Record each auction.
                 input2.for_each(|time, data| {
                     for auction in data.iter().cloned() {
-//                                        eprintln!("[{:?}] auction: {:?}", time.time().inner, auction);
-                        if capability.as_ref().map(|c| nt.to_nexmark_time(*c.time()) <= auction.expires) != Some(true) {
+                        //                                        eprintln!("[{:?}] auction: {:?}", time.time().inner, auction);
+                        if capability
+                            .as_ref()
+                            .map(|c| nt.to_nexmark_time(*c.time()) <= auction.expires)
+                            != Some(true)
+                        {
                             capability = Some(time.delayed(&nt.from_nexmark_time(auction.expires)));
                         }
                         opens.push((Reverse(auction.expires), auction.id));
@@ -81,16 +93,29 @@ pub fn q4_q6_common<S: Scope<Timestamp=usize>>(input: &NexmarkInput, nt: Nexmark
 
                 // Use frontiers to determine which auctions to close.
                 if let Some(ref capability) = capability {
-                    let complete1 = input1.frontier.frontier().get(0).cloned().unwrap_or(usize::max_value());
-                    let complete2 = input2.frontier.frontier().get(0).cloned().unwrap_or(usize::max_value());
+                    let complete1 = input1
+                        .frontier
+                        .frontier()
+                        .get(0)
+                        .cloned()
+                        .unwrap_or(usize::max_value());
+                    let complete2 = input2
+                        .frontier
+                        .frontier()
+                        .get(0)
+                        .cloned()
+                        .unwrap_or(usize::max_value());
                     let complete = std::cmp::min(complete1, complete2);
 
                     let mut session = output.session(capability);
-                    while opens.peek().map(|x| complete == usize::max_value() || (x.0).0 < nt.to_nexmark_time(complete)) == Some(true) {
-//                                        eprintln!("[{:?}] opens.len(): {} state.len(): {} {:?}", capability.time().inner, opens.len(), state.len(), state.iter().map(|x| (x.1).1.len()).sum::<usize>());
+                    while opens.peek().map(|x| {
+                        complete == usize::max_value() || (x.0).0 < nt.to_nexmark_time(complete)
+                    }) == Some(true)
+                    {
+                        //                                        eprintln!("[{:?}] opens.len(): {} state.len(): {} {:?}", capability.time().inner, opens.len(), state.len(), state.iter().map(|x| (x.1).1.len()).sum::<usize>());
 
                         let (Reverse(time), auction) = opens.pop().unwrap();
-                        let mut entry = state.entry(auction);
+                        let entry = state.entry(auction);
                         if let Entry::Occupied(mut entry) = entry {
                             let delete = {
                                 let auction_bids = entry.get_mut();
@@ -118,11 +143,13 @@ pub fn q4_q6_common<S: Scope<Timestamp=usize>>(input: &NexmarkInput, nt: Nexmark
 
                 // Downgrade capability.
                 if let Some(head) = opens.peek() {
-                    capability.as_mut().map(|c| c.downgrade(&nt.from_nexmark_time((head.0).0)));
+                    capability
+                        .as_mut()
+                        .map(|c| c.downgrade(&nt.from_nexmark_time((head.0).0)));
                 } else {
                     capability = None;
                 }
             }
-        }
+        },
     )
 }
