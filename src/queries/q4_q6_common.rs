@@ -6,13 +6,22 @@ use timely::state::primitives::ManagedMap;
 use crate::event::{Auction, Bid};
 
 use crate::queries::{NexmarkInput, NexmarkTimer};
-use faster_rs::FasterValue;
+use faster_rs::FasterRmw;
 
 #[derive(Serialize, Deserialize)]
-struct AuctionBids(Option<Auction>, Vec<Bid>);
+struct VecBids(Vec<Bid>);
 
-impl FasterValue for AuctionBids {
-    fn rmw(&self, modification: Self) -> Self {
+impl FasterRmw for VecBids {
+    fn rmw(&self, _modification: Self) -> Self {
+        panic!("RMW on Vec<T> is unsafe");
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct AuctionBids(Option<Auction>, VecBids);
+
+impl FasterRmw for AuctionBids {
+    fn rmw(&self, _modification: Self) -> Self {
         unimplemented!()
     }
 }
@@ -22,11 +31,11 @@ pub fn q4_q6_common<S: Scope<Timestamp = usize>>(
     nt: NexmarkTimer,
     scope: &mut S,
 ) -> Stream<S, (Auction, Bid)> {
-    let bids = input.bids(scope);
-    let auctions = input.auctions(scope);
+    let input_bids = input.bids(scope);
+    let input_auctions = input.auctions(scope);
 
-    bids.binary_frontier(
-        &auctions,
+    input_bids.binary_frontier(
+        &input_auctions,
         Exchange::new(|b: &Bid| b.auction as u64),
         Exchange::new(|a: &Auction| a.id as u64),
         "Q4 Auction close",
@@ -53,17 +62,18 @@ pub fn q4_q6_common<S: Scope<Timestamp = usize>>(
                         let id = bid.auction;
                         let mut entry = state
                             .remove(&bid.auction)
-                            .unwrap_or(AuctionBids(None, Vec::new()));
+                            .unwrap_or(AuctionBids(None, VecBids(Vec::new())));
+                        let bids = &mut (entry.1).0;
                         if let Some(ref auction) = entry.0 {
-                            debug_assert!(entry.1.len() <= 1);
+                            debug_assert!(bids.len() <= 1);
                             if is_valid_bid(&bid, auction) {
                                 // bid must fall between auction creation and expiration
-                                if let Some(existing) = entry.1.get(0).cloned() {
+                                if let Some(existing) = bids.get(0).cloned() {
                                     if existing.price < bid.price {
-                                        entry.1[0] = bid;
+                                        bids[0] = bid;
                                     }
                                 } else {
-                                    entry.1.push(bid);
+                                    bids.push(bid);
                                 }
                             }
                         } else {
@@ -76,7 +86,7 @@ pub fn q4_q6_common<S: Scope<Timestamp = usize>>(
                                 capability =
                                     Some(time.delayed(&nt.from_nexmark_time(bid.date_time)));
                             }
-                            entry.1.push(bid);
+                            bids.push(bid);
                         }
                         state.insert(id, entry);
                     }
@@ -97,12 +107,13 @@ pub fn q4_q6_common<S: Scope<Timestamp = usize>>(
                         opens.push((Reverse(auction.expires), auction.id));
                         let mut entry = state
                             .remove(&auction.id)
-                            .unwrap_or(AuctionBids(None, Vec::new()));
+                            .unwrap_or(AuctionBids(None, VecBids(Vec::new())));
                         debug_assert!(entry.0.is_none());
-                        entry.1.retain(|bid| is_valid_bid(&bid, &auction));
-                        if let Some(bid) = entry.1.iter().max_by_key(|bid| bid.price).cloned() {
-                            entry.1.clear();
-                            entry.1.push(bid);
+                        let bids = &mut (entry.1).0;
+                        bids.retain(|bid| is_valid_bid(&bid, &auction));
+                        if let Some(bid) = bids.iter().max_by_key(|bid| bid.price).cloned() {
+                            bids.clear();
+                            bids.push(bid);
                         }
                         entry.0 = Some(auction);
                         state.insert(id, entry);
@@ -135,10 +146,11 @@ pub fn q4_q6_common<S: Scope<Timestamp = usize>>(
                         let (Reverse(time), auction) = opens.pop().unwrap();
                         if let Some(mut auction_bids) = state.remove(&auction) {
                             let delete = {
+                                let bids = &mut (auction_bids.1).0;
                                 if let Some(ref auction) = auction_bids.0 {
                                     if time == auction.expires {
                                         // Auction expired, clean up state
-                                        if let Some(winner) = auction_bids.1.pop() {
+                                        if let Some(winner) = bids.pop() {
                                             session.give((auction.clone(), winner));
                                         }
                                         true
@@ -146,8 +158,8 @@ pub fn q4_q6_common<S: Scope<Timestamp = usize>>(
                                         false
                                     }
                                 } else {
-                                    auction_bids.1.retain(|bid| bid.date_time > time);
-                                    auction_bids.1.is_empty()
+                                    bids.retain(|bid| bid.date_time > time);
+                                    bids.is_empty()
                                 }
                             };
                             if !delete {

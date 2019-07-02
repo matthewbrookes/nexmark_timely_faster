@@ -1,4 +1,4 @@
-use faster_rs::FasterValue;
+use faster_rs::FasterRmw;
 use rand::rngs::SmallRng;
 use rand::seq::SliceRandom;
 use rand::Rng;
@@ -176,7 +176,7 @@ pub struct Person {
     pub date_time: Date,
 }
 
-impl FasterValue for Person {
+impl FasterRmw for Person {
     fn rmw(&self, _modification: Person) -> Person {
         unimplemented!();
     }

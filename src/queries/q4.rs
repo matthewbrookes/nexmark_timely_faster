@@ -2,13 +2,13 @@ use timely::dataflow::channels::pact::Exchange;
 use timely::dataflow::operators::{Map, Operator};
 use timely::dataflow::{Scope, Stream};
 
-use faster_rs::FasterValue;
+use faster_rs::FasterRmw;
 use {crate::queries::NexmarkInput, crate::queries::NexmarkTimer};
 
 #[derive(Serialize, Deserialize)]
 struct SumWithCount(usize, usize);
 
-impl FasterValue for SumWithCount {
+impl FasterRmw for SumWithCount {
     fn rmw(&self, modification: Self) -> Self {
         SumWithCount(self.0 + modification.0, self.1 + modification.1)
     }

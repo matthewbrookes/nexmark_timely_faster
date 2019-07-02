@@ -5,7 +5,17 @@ use timely::state::primitives::ManagedMap;
 
 use crate::event::{Auction, Person};
 
+use faster_rs::FasterRmw;
 use {crate::queries::NexmarkInput, crate::queries::NexmarkTimer};
+
+#[derive(Serialize, Deserialize)]
+struct VecAuctions(Vec<Auction>);
+
+impl FasterRmw for VecAuctions {
+    fn rmw(&self, _modification: Self) -> Self {
+        panic!("RMW on Vec<T> is unsafe");
+    }
+}
 
 pub fn q3<S: Scope<Timestamp = usize>>(
     input: &NexmarkInput,
@@ -27,7 +37,7 @@ pub fn q3<S: Scope<Timestamp = usize>>(
         Exchange::new(|p: &Person| p.id as u64),
         "Q3 Join",
         |_capability, _info, state_handle| {
-            let mut state1: Box<ManagedMap<usize, Vec<Auction>>> =
+            let mut state1: Box<ManagedMap<usize, VecAuctions>> =
                 state_handle.get_managed_map("state1");
             let mut state2: Box<ManagedMap<usize, Person>> = state_handle.get_managed_map("state2");
 
@@ -46,8 +56,10 @@ pub fn q3<S: Scope<Timestamp = usize>>(
                             ));
                         }
                         let seller = auction.seller;
-                        let mut entry = state1.remove(&auction.seller).unwrap_or(Vec::new());
-                        entry.push(auction);
+                        let mut entry = state1
+                            .remove(&auction.seller)
+                            .unwrap_or(VecAuctions(Vec::new()));
+                        entry.0.push(auction);
                         state1.insert(seller, entry);
                     }
                 });
@@ -58,7 +70,7 @@ pub fn q3<S: Scope<Timestamp = usize>>(
                     let mut session = output.session(&time);
                     for person in people_buffer.drain(..) {
                         if let Some(auctions) = state1.get(&person.id) {
-                            for auction in auctions.iter() {
+                            for auction in auctions.0.iter() {
                                 session.give((
                                     person.name.clone(),
                                     person.city.clone(),
