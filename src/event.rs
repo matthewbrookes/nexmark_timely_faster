@@ -75,6 +75,12 @@ impl ::std::ops::Sub for Date {
     }
 }
 
+impl FasterRmw for Date {
+    fn rmw(&self, modification: Self) -> Self {
+        Date(self.0 + modification.0)
+    }
+}
+
 const MIN_STRING_LENGTH: usize = 3;
 // const BASE_TIME: usize = 1436918400_000;
 

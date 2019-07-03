@@ -18,9 +18,10 @@ pub fn q8<S: Scope<Timestamp = usize>>(
         Exchange::new(|p: &(usize, _)| p.0 as u64),
         Exchange::new(|a: &(usize, _)| a.0 as u64),
         "Q8 join",
-        |_capability, _info, _state_handle| {
+        |_capability, _info, state_handle| {
             let window_size_ns = 12 * 60 * 60 * 1_000_000_000;
-            let mut new_people = std::collections::HashMap::new();
+            let mut new_people = state_handle.get_managed_map("new_people");
+            // Use Rust Vec because we need to iterate through
             let mut auctions = Vec::new();
 
             move |input1, input2, output| {
