@@ -5,7 +5,7 @@ use timely::dataflow::{Scope, Stream};
 
 use crate::event::Date;
 
-use crate::queries::{NexmarkInput, NexmarkTimer};
+use {crate::queries::NexmarkInput, crate::queries::NexmarkTimer};
 
 pub fn q5<S: Scope<Timestamp = usize>>(
     input: &NexmarkInput,
@@ -26,16 +26,12 @@ pub fn q5<S: Scope<Timestamp = usize>>(
         .unary_frontier(
             Exchange::new(|b: &(usize, _)| b.0 as u64),
             "Q5 Accumulate",
-            |_capability, _info, state_handle| {
-                // Use Rust HashMaps here because later we need to iterate through keys
+            |_capability, _info, _state_handle| {
                 let mut additions = HashMap::new();
-                let mut deletions: HashMap<Capability<usize>, Vec<usize>> = HashMap::new();
-
-                let mut accumulations = state_handle.get_managed_map("accumulations");
+                let mut deletions = HashMap::new();
+                let mut accumulations = HashMap::new();
 
                 let mut bids_buffer = vec![];
-
-                let mut hot_item = (0, 0);
 
                 move |input, output| {
                     input.for_each(|time, data| {
@@ -80,36 +76,32 @@ pub fn q5<S: Scope<Timestamp = usize>>(
                     times.dedup();
 
                     for time in times.drain(..) {
-                        if let Some(deletions) = deletions.remove(&time) {
-                            for auction in deletions.into_iter() {
-                                match accumulations.remove(&auction) {
-                                    None => panic!("entry has to exist"),
-                                    Some(entry) => {
-                                        if entry > 1 {
-                                            accumulations.insert(auction, entry - 1);
-                                        }
-                                        if auction == hot_item.0 {
-                                            hot_item.1 -= 1;
-                                        }
-                                    }
-                                }
-                            }
-                        }
                         if let Some(additions) = additions.remove(&time) {
                             for &auction in additions.iter() {
-                                accumulations.rmw(auction, 1);
-                                let new_acc =
-                                    accumulations.get(&auction).expect("entry has to exist");
-                                if *new_acc > hot_item.1 {
-                                    hot_item = (auction, *new_acc);
-                                }
+                                *accumulations.entry(auction).or_insert(0) += 1;
                             }
                             let new_time = time.time() + (window_slice_count * window_slide_ns);
                             deletions.insert(time.delayed(&new_time), additions);
                         }
+                        if let Some(deletions) = deletions.remove(&time) {
+                            for auction in deletions.into_iter() {
+                                use std::collections::hash_map::Entry;
+                                match accumulations.entry(auction) {
+                                    Entry::Occupied(mut entry) => {
+                                        *entry.get_mut() -= 1;
+                                        if *entry.get_mut() == 0 {
+                                            entry.remove();
+                                        }
+                                    }
+                                    _ => panic!("entry has to exist"),
+                                }
+                            }
+                        }
                         // TODO: This only accumulates per *worker*, not globally!
-                        if hot_item != (0, 0) {
-                            output.session(&time).give(hot_item.0);
+                        if let Some((_count, auction)) =
+                            accumulations.iter().map(|(&a, &c)| (c, a)).max()
+                        {
+                            output.session(&time).give(auction);
                         }
                     }
                 }
