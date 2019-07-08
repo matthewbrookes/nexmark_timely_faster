@@ -134,7 +134,7 @@ fn main() {
     let statm_reporter_running = nexmark::tools::statm_reporter();
 
     // define a new computational scope, in which to run NEXMark queries
-    let timelines: Vec<_> = timely::execute_from_args(timely_args.into_iter(), move |worker| {
+    let timelines: Vec<_> = timely::execute_from_args(timely_args.into_iter(), move |worker, _node_state_handle| {
         let peers = worker.peers();
         let index = worker.index();
 

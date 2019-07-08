@@ -9,16 +9,7 @@ use crate::queries::{NexmarkInput, NexmarkTimer};
 use faster_rs::FasterRmw;
 
 #[derive(Serialize, Deserialize)]
-struct VecBids(Vec<Bid>);
-
-impl FasterRmw for VecBids {
-    fn rmw(&self, _modification: Self) -> Self {
-        panic!("RMW on Vec<T> is unsafe");
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-struct AuctionBids(Option<Auction>, VecBids);
+struct AuctionBids(Option<Auction>, Vec<Bid>);
 
 impl FasterRmw for AuctionBids {
     fn rmw(&self, _modification: Self) -> Self {
@@ -62,8 +53,8 @@ pub fn q4_q6_common<S: Scope<Timestamp = usize>>(
                         let id = bid.auction;
                         let mut entry = state
                             .remove(&bid.auction)
-                            .unwrap_or(AuctionBids(None, VecBids(Vec::new())));
-                        let bids = &mut (entry.1).0;
+                            .unwrap_or(AuctionBids(None, Vec::new()));
+                        let bids = &mut entry.1;
                         if let Some(ref auction) = entry.0 {
                             debug_assert!(bids.len() <= 1);
                             if is_valid_bid(&bid, auction) {
@@ -107,9 +98,9 @@ pub fn q4_q6_common<S: Scope<Timestamp = usize>>(
                         opens.push((Reverse(auction.expires), auction.id));
                         let mut entry = state
                             .remove(&auction.id)
-                            .unwrap_or(AuctionBids(None, VecBids(Vec::new())));
+                            .unwrap_or(AuctionBids(None, Vec::new()));
                         debug_assert!(entry.0.is_none());
-                        let bids = &mut (entry.1).0;
+                        let bids = &mut entry.1;
                         bids.retain(|bid| is_valid_bid(&bid, &auction));
                         if let Some(bid) = bids.iter().max_by_key(|bid| bid.price).cloned() {
                             bids.clear();
@@ -146,7 +137,7 @@ pub fn q4_q6_common<S: Scope<Timestamp = usize>>(
                         let (Reverse(time), auction) = opens.pop().unwrap();
                         if let Some(mut auction_bids) = state.remove(&auction) {
                             let delete = {
-                                let bids = &mut (auction_bids.1).0;
+                                let bids = &mut auction_bids.1;
                                 if let Some(ref auction) = auction_bids.0 {
                                     if time == auction.expires {
                                         // Auction expired, clean up state
