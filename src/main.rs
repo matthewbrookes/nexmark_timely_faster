@@ -32,6 +32,7 @@ use timely::ExchangeData;
 
 use nexmark::event::Event;
 use nexmark::queries::{NexmarkInput, NexmarkTimer};
+use timely::dataflow::operators::inspect::Inspect;
 
 #[allow(dead_code)]
 fn verify<S: Scope, T: ExchangeData + Ord + ::std::fmt::Debug>(
@@ -281,6 +282,23 @@ fn main() {
                 let window_slide_ns = 1_000_000_000;
                 worker.dataflow::<_, _, _, FASTERBackend>(|scope| {
                     ::nexmark::queries::q5(
+                        &nexmark_input,
+                        nexmark_timer,
+                        scope,
+                        window_slice_count,
+                        window_slide_ns,
+                    )
+                    .probe_with(&mut probe);
+                });
+            }
+
+            if queries.iter().any(|x| *x == "q5_stateful") {
+                // 60s windows, ticking in 1s intervals
+                // NEXMark default is 60 minutes, ticking in one minute intervals
+                let window_slice_count = 60;
+                let window_slide_ns = 1_000_000_000;
+                worker.dataflow::<_, _, _, FASTERBackend>(|scope| {
+                    ::nexmark::queries::q5_stateful(
                         &nexmark_input,
                         nexmark_timer,
                         scope,
