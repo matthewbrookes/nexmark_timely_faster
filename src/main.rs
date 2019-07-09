@@ -311,7 +311,10 @@ fn main() {
 
             if queries.iter().any(|x| *x == "q8") {
                 worker.dataflow::<_, _, _, FASTERBackend>(|scope| {
-                    ::nexmark::queries::q8(&nexmark_input, nexmark_timer, scope)
+                    // Window ticks every 12 minutes.
+                    // NEXMark default is different: ticks every 12h
+                    let window_size_ns = 720 * 1_000_000_000;
+                    ::nexmark::queries::q8(&nexmark_input, nexmark_timer, scope, window_size_ns)
                         .probe_with(&mut probe);
                 });
             }

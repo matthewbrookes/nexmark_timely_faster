@@ -2,84 +2,69 @@ use timely::dataflow::channels::pact::Exchange;
 use timely::dataflow::operators::{Map, Operator};
 use timely::dataflow::{Scope, Stream};
 
+use std::collections::HashSet;
 use {crate::queries::NexmarkInput, crate::queries::NexmarkTimer};
 
 pub fn q8<S: Scope<Timestamp = usize>>(
     input: &NexmarkInput,
-    nt: NexmarkTimer,
+    _nt: NexmarkTimer,
     scope: &mut S,
+    window_size_ns: usize,
 ) -> Stream<S, usize> {
-    let auctions = input.auctions(scope).map(|a| (a.seller, a.date_time));
+    let auctions = input.auctions(scope).map(move |a| {
+        (
+            a.seller,
+            ((*a.date_time / window_size_ns) + 1) * window_size_ns,
+        )
+    });
 
-    let people = input.auctions(scope).map(|p| (p.id, p.date_time));
+    let people = input
+        .people(scope)
+        .map(move |p| (p.id, ((*p.date_time / window_size_ns) + 1) * window_size_ns));
 
-    people.binary_frontier(
+    let mut auction_state = scope.get_state_handle().get_managed_map("q8-auctions");
+    let mut people_state = scope.get_state_handle().get_managed_map("q8-people");
+
+    people.binary_notify(
         &auctions,
         Exchange::new(|p: &(usize, _)| p.0 as u64),
         Exchange::new(|a: &(usize, _)| a.0 as u64),
         "Q8 join",
-        |_capability, _info, state_handle| {
-            let window_size_ns = 12 * 60 * 60 * 1_000_000_000;
-            let mut new_people = state_handle.get_managed_map("new_people");
-            // Use Rust Vec because we need to iterate through
-            let mut auctions = Vec::new();
+        None,
+        move |a_input, p_input, output, notificator, _| {
+            let mut a_buffer = Vec::new();
+            a_input.for_each(|time, data| {
+                data.swap(&mut a_buffer);
+                for &(a_id, a_time) in a_buffer.iter() {
+                    notificator.notify_at(time.delayed(&a_time));
+                    auction_state.rmw(a_time, vec![a_id]);
+                }
+            });
 
-            move |input1, input2, output| {
-                // Notice new people.
-                input1.for_each(|_time, data| {
-                    for (person, time) in data.iter().cloned() {
-                        new_people.insert(person, time);
-                    }
-                });
+            let mut p_buffer = Vec::new();
+            p_input.for_each(|time, data| {
+                data.swap(&mut p_buffer);
+                for &(p_id, p_time) in p_buffer.iter() {
+                    notificator.notify_at(time.delayed(&p_time));
+                    people_state.rmw(
+                        p_time,
+                        [p_id].iter().map(|x| *x).collect::<HashSet<usize>>(),
+                    );
+                }
+            });
 
-                // Notice new auctions.
-                input2.for_each(|time, data| {
-                    let mut data_vec = vec![];
-                    data.swap(&mut data_vec);
-                    auctions.push((time.retain(), data_vec));
-                });
-
-                // Determine least timestamp we might still see.
-                let complete1 = input1
-                    .frontier
-                    .frontier()
-                    .get(0)
-                    .cloned()
-                    .unwrap_or(usize::max_value());
-                let complete2 = input2
-                    .frontier
-                    .frontier()
-                    .get(0)
-                    .cloned()
-                    .unwrap_or(usize::max_value());
-                let complete = std::cmp::min(complete1, complete2);
-
-                for (capability, auctions) in auctions.iter_mut() {
-                    if *capability.time() < complete {
-                        {
-                            let mut session = output.session(&capability);
-                            for &(person, time) in auctions.iter() {
-                                if time < nt.to_nexmark_time(complete) {
-                                    if let Some(p_time) = new_people.get(&person) {
-                                        if *time < **p_time + window_size_ns {
-                                            session.give(person);
-                                        }
-                                    }
-                                }
+            notificator.for_each(|cap, _, _| {
+                if let Some(auctions_in_window) = auction_state.remove(cap.time()) {
+                    if let Some(new_people) = people_state.remove(cap.time()) {
+                        let mut session = output.session(&cap);
+                        for seller in auctions_in_window {
+                            if new_people.contains(&seller) {
+                                session.give(seller);
                             }
-                            auctions.retain(|&(_, time)| time >= nt.to_nexmark_time(complete));
-                        }
-                        if let Some(minimum) = auctions.iter().map(|x| x.1).min() {
-                            capability.downgrade(&nt.from_nexmark_time(minimum));
                         }
                     }
                 }
-                auctions.retain(|&(_, ref list)| !list.is_empty());
-                // println!("auctions.len: {:?}", auctions.len());
-                // for thing in auctions.iter() {
-                //     println!("\t{:?} (len: {:?}) vs {:?}", thing.0, thing.1.len(), complete);
-                // }
-            }
+            });
         },
     )
 }
