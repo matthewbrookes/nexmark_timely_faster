@@ -1,10 +1,10 @@
 use timely::dataflow::channels::pact::{Exchange, Pipeline};
-use timely::dataflow::operators::{Capability, Map, Operator};
+use timely::dataflow::operators::{Map, Operator};
 use timely::dataflow::{Scope, Stream};
 
 use crate::event::Date;
 
-use {crate::queries::NexmarkInput, crate::queries::NexmarkTimer};
+use crate::queries::{NexmarkInput, NexmarkTimer};
 
 pub fn q7<S: Scope<Timestamp = usize>>(
     input: &NexmarkInput,
@@ -12,6 +12,12 @@ pub fn q7<S: Scope<Timestamp = usize>>(
     scope: &mut S,
     window_size_ns: usize,
 ) -> Stream<S, usize> {
+    let mut pre_reduce_state = scope
+        .get_state_handle()
+        .get_managed_map("q7-pre-reduce-state");
+    let mut all_reduce_state = scope
+        .get_state_handle()
+        .get_managed_map("q7-all-reduce-state");
     input
         .bids(scope)
         .map(move |b| {
@@ -20,67 +26,57 @@ pub fn q7<S: Scope<Timestamp = usize>>(
                 b.price,
             )
         })
-        .unary_frontier(Pipeline, "Q7 Pre-reduce", |_cap, _info, _state_handle| {
-            // Tracks the worker-local maximal bid for each capability.
-            let mut maxima = Vec::<(Capability<usize>, usize)>::new();
-
-            move |input, output| {
+        .unary_notify(
+            Pipeline,
+            "Q7 Pre-Reduce",
+            None,
+            move |input, output, notificator, _| {
+                let mut buffer = Vec::new();
                 input.for_each(|time, data| {
-                    for (window, price) in data.iter().cloned() {
-                        if let Some(position) = maxima
-                            .iter()
-                            .position(|x| *(x.0).time() == nt.from_nexmark_time(window))
-                        {
-                            if maxima[position].1 < price {
-                                maxima[position].1 = price;
-                            }
-                        } else {
-                            maxima.push((time.delayed(&nt.from_nexmark_time(window)), price));
+                    // Notify at end of epoch
+                    notificator.notify_at(
+                        time.delayed(&(((time.time() / window_size_ns) + 1) * window_size_ns)),
+                    );
+                    data.swap(&mut buffer);
+                    for &(b_time, b_price) in buffer.iter() {
+                        let epoch = nt.from_nexmark_time(b_time);
+                        let current_highest = pre_reduce_state.get(&epoch).map_or(0, |v| *v);
+                        if b_price > current_highest {
+                            pre_reduce_state.insert(epoch, b_price);
                         }
                     }
                 });
 
-                for &(ref capability, price) in maxima.iter() {
-                    if !input.frontier.less_than(capability.time()) {
-                        output
-                            .session(&capability)
-                            .give((*capability.time(), price));
+                notificator.for_each(|cap, _, _| {
+                    if let Some(max_price) = pre_reduce_state.remove(&cap.time()) {
+                        output.session(&cap).give((*cap.time(), max_price));
                     }
-                }
-
-                maxima.retain(|(capability, _)| input.frontier.less_than(capability));
-            }
-        })
-        .unary_frontier(
+                });
+            },
+        )
+        .unary_notify(
             Exchange::new(move |x: &(usize, usize)| (x.0 / window_size_ns) as u64),
-            "Q7 All-reduce",
-            |_cap, _info, _state_handle| {
-                // Tracks the global maximal bid for each capability.
-                let mut maxima = Vec::<(Capability<usize>, usize)>::new();
-
-                move |input, output| {
-                    input.for_each(|time, data| {
-                        for (window, price) in data.iter().cloned() {
-                            if let Some(position) =
-                                maxima.iter().position(|x| *(x.0).time() == window)
-                            {
-                                if maxima[position].1 < price {
-                                    maxima[position].1 = price;
-                                }
-                            } else {
-                                maxima.push((time.delayed(&window), price));
-                            }
-                        }
-                    });
-
-                    for &(ref capability, price) in maxima.iter() {
-                        if !input.frontier.less_than(capability.time()) {
-                            output.session(&capability).give(price);
+            "Q7 All-Reduce",
+            None,
+            move |input, output, notificator, _| {
+                let mut buffer = Vec::new();
+                input.for_each(|time, data| {
+                    // Notify at end of epoch
+                    notificator.notify_at(time.retain());
+                    data.swap(&mut buffer);
+                    for &(b_time, b_price) in buffer.iter() {
+                        let current_highest = all_reduce_state.get(&b_time).map_or(0, |v| *v);
+                        if b_price > current_highest {
+                            all_reduce_state.insert(b_time, b_price);
                         }
                     }
+                });
 
-                    maxima.retain(|(capability, _)| input.frontier.less_than(capability));
-                }
+                notificator.for_each(|cap, _, _| {
+                    if let Some(max_price) = all_reduce_state.remove(&cap.time()) {
+                        output.session(&cap).give(max_price);
+                    }
+                });
             },
         )
 }
