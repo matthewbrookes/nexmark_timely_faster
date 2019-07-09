@@ -16,6 +16,15 @@ impl FasterRmw for Counts {
     }
 }
 
+#[derive(Deserialize, Serialize)]
+struct AuctionBids((usize, usize));
+
+impl FasterRmw for AuctionBids {
+    fn rmw(&self, _modification: Self) -> Self {
+        panic!("RMW on AuctionBids not allowed!");
+    }
+}
+
 pub fn q5<S: Scope<Timestamp = usize>>(
     input: &NexmarkInput,
     _nt: NexmarkTimer,
@@ -23,7 +32,12 @@ pub fn q5<S: Scope<Timestamp = usize>>(
     window_slice_count: usize,
     window_slide_ns: usize,
 ) -> Stream<S, usize> {
-    let mut state = scope.get_state_handle().get_managed_map("q5-state");
+    let mut pre_reduce_state = scope
+        .get_state_handle()
+        .get_managed_map("q5-pre-reduce-state");
+    let mut all_reduce_state = scope
+        .get_state_handle()
+        .get_managed_map("q5-all-reduce-state");
     input
         .bids(scope)
         .map(move |b| {
@@ -51,18 +65,21 @@ pub fn q5<S: Scope<Timestamp = usize>>(
                     ));
                     data.swap(&mut buffer);
                     for &(auction, a_time) in buffer.iter() {
-                        let mut counts: Counts =
-                            state.remove(&a_time).unwrap_or(Counts(HashMap::new()));
+                        let mut counts: Counts = pre_reduce_state
+                            .remove(&a_time)
+                            .unwrap_or(Counts(HashMap::new()));
                         let count = counts.0.entry(auction).or_insert(0);
                         *count += 1;
-                        state.insert(a_time, counts);
+                        pre_reduce_state.insert(a_time, counts);
                     }
                 });
 
                 notificator.for_each(|cap, _, _| {
                     let mut counts = HashMap::new();
                     for i in 0..window_slice_count {
-                        if let Some(slide_counts) = state.get(&(cap.time() - i * window_slide_ns)) {
+                        if let Some(slide_counts) =
+                            pre_reduce_state.get(&(cap.time() - i * window_slide_ns))
+                        {
                             for (auction, count) in slide_counts.0.iter() {
                                 *counts.entry(*auction).or_insert(0) += *count;
                             }
@@ -76,22 +93,38 @@ pub fn q5<S: Scope<Timestamp = usize>>(
                             .session(&cap)
                             .give((*counts_vec[0].0, *counts_vec[0].1));
                     }
-                    state.remove(&(cap.time() - window_slice_count * window_slide_ns));
+                    pre_reduce_state.remove(&(cap.time() - window_slice_count * window_slide_ns));
                 });
             },
         )
-        .unary(
+        .unary_notify(
             Exchange::new(|_| 0),
             "Q5 Accumulate Globally",
-            move |_, _, _| {
-                move |input, output| {
-                    let mut buffer = Vec::new();
-                    input.for_each(|time, data| {
-                        data.swap(&mut buffer);
-                        buffer.sort_by(|a, b| b.1.cmp(&a.1));
-                        output.session(&time).give(buffer[0].0);
-                    });
-                }
+            None,
+            move |input, output, notificator, _| {
+                let mut buffer = Vec::new();
+                input.for_each(|time, data| {
+                    notificator.notify_at(time.delayed(&(time.time())));
+                    data.swap(&mut buffer);
+                    for &(auction_id, count) in buffer.iter() {
+                        let current_item = all_reduce_state.get(time.time());
+                        match current_item {
+                            None => all_reduce_state
+                                .insert(*time.time(), AuctionBids((auction_id, count))),
+                            Some(current_item) => {
+                                if count > (current_item.0).1 {
+                                    all_reduce_state
+                                        .insert(*time.time(), AuctionBids((auction_id, count)));
+                                }
+                            }
+                        }
+                    }
+                });
+                notificator.for_each(|cap, _, _| {
+                    output
+                        .session(&cap)
+                        .give((all_reduce_state.remove(cap.time()).expect("Must exist").0).0)
+                });
             },
         )
 }
