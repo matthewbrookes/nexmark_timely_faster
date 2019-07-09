@@ -59,7 +59,7 @@ pub fn q5<S: Scope<Timestamp = usize>>(
                     }
                 });
 
-                notificator.for_each(|cap, _, notificator| {
+                notificator.for_each(|cap, _, _| {
                     let mut counts = HashMap::new();
                     for i in 0..window_slice_count {
                         if let Some(slide_counts) = state.get(&(cap.time() - i * window_slide_ns)) {
@@ -76,13 +76,14 @@ pub fn q5<S: Scope<Timestamp = usize>>(
                             .session(&cap)
                             .give((*counts_vec[0].0, *counts_vec[0].1));
                     }
+                    state.remove(&(cap.time() - window_slice_count * window_slide_ns));
                 });
             },
         )
         .unary(
             Exchange::new(|_| 0),
             "Q5 Accumulate Globally",
-            move |_cap, _info, state_handle| {
+            move |_, _, _| {
                 move |input, output| {
                     let mut buffer = Vec::new();
                     input.for_each(|time, data| {
