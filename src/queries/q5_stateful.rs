@@ -35,9 +35,9 @@ pub fn q5_stateful<S: Scope<Timestamp = usize>>(
         // TODO: Could pre-aggregate pre-exchange, if there was reason to do so.
         .unary_notify(
             Exchange::new(|b: &(usize, _)| b.0 as u64),
-            "Q5 Accumulate",
+            "Q5 Accumulate Per Worker",
             None,
-            move |input, output, notificator, state_handle| {
+            move |input, output, notificator, _state_handle| {
                 let mut buffer = Vec::new();
                 input.for_each(|time, data| {
                     // Notify at end of this epoch
@@ -71,9 +71,26 @@ pub fn q5_stateful<S: Scope<Timestamp = usize>>(
                     let mut counts_vec: Vec<_> = counts.iter().collect();
                     counts_vec.sort_by(|a, b| b.1.cmp(a.1));
                     if counts_vec.len() > 0 {
-                        output.session(&cap).give(*counts_vec[0].0);
+                        // Gives the accumulation per worker
+                        output
+                            .session(&cap)
+                            .give((*counts_vec[0].0, *counts_vec[0].1));
                     }
                 });
+            },
+        )
+        .unary(
+            Exchange::new(|_| 0),
+            "Q5 Accumulate Globally",
+            move |_cap, _info, state_handle| {
+                move |input, output| {
+                    let mut buffer = Vec::new();
+                    input.for_each(|time, data| {
+                        data.swap(&mut buffer);
+                        buffer.sort_by(|a, b| b.1.cmp(&a.1));
+                        output.session(&time).give(buffer[0].0);
+                    });
+                }
             },
         )
 }
