@@ -217,7 +217,6 @@ fn main() {
                     bids_stream.capture_into(bids.clone());
                     auctions_stream.capture_into(auctions.clone());
                     people_stream.capture_into(people.clone());
-                    //control_input.to_stream(scope).broadcast().capture_into(control.clone());
                 },
             );
 
@@ -396,16 +395,8 @@ fn main() {
                     events_so_far += worker.peers();
                 }
                 input.advance_to(target_ns as usize + count);
-            /*
-            if let Some(control_input) = control_input.as_mut() {
-                if *control_input.time() < target_ns as usize + count {
-                    control_input.advance_to(target_ns as usize + count);
-                }
-            }
-            */
             } else {
                 input.take().unwrap();
-                //control_input.take();
             }
 
             if input.is_some() {
