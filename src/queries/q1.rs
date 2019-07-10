@@ -1,5 +1,5 @@
-use ::timely::dataflow::{Scope, Stream};
 use timely::dataflow::operators::Map;
+use timely::dataflow::{Scope, Stream};
 
 use crate::event::Bid;
 

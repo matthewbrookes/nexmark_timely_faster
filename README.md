@@ -5,7 +5,7 @@ A lot of this implementation is derived from Moritz Hoffman's implementation in 
 ## Running a Query
 Each query can be run for a specified duration (in seconds) and with a given event generation rate
 
-Queries have two varieties depending on state backend e.g. `q3_faster` or `q3_mem`.
+Queries have three varieties. To run using "vanilla" Timely simply supply the query number e.g. `q3`. To run using Managed State supply the desired state backend as a suffix e.g. `q3_faster` or `q3_mem`.
 ```bash
 $ cargo run --release -- --duration 1000 --rate 1000000 --queries q3_faster
 ```
