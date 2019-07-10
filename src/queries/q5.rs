@@ -97,14 +97,42 @@ pub fn q5<S: Scope<Timestamp = usize>>(
                                 }
                             }
                         }
-                        // TODO: This only accumulates per *worker*, not globally!
-                        if let Some((_count, auction)) =
+                        if let Some((count, auction)) =
                             accumulations.iter().map(|(&a, &c)| (c, a)).max()
                         {
-                            output.session(&time).give(auction);
+                            output.session(&time).give((auction, count));
                         }
                     }
                 }
             },
+        )
+        .unary_frontier(
+            Exchange::new(|_| 0),
+            "Q5 All-Accumulate",
+            |_cap, _info, _state_handle| {
+                let mut hot_items = HashMap::new();
+
+                let mut buffer = Vec::new();
+                move |input, output| {
+                    input.for_each(|time, data| {
+                        println!("Time: {}", time.time());
+                        data.swap(&mut buffer);
+                        let current_hottest = hot_items.entry(time.retain()).or_insert((0, 0));
+                        for &(auction, count) in buffer.iter() {
+                            if count > current_hottest.1 {
+                                *current_hottest = (auction, count);
+                            }
+                        }
+                    });
+
+                    for (time, (auction, _count)) in hot_items.iter() {
+                        if !input.frontier.less_than(time.time()) {
+                            output.session(&time).give(*auction);
+                        }
+                    }
+
+                    hot_items.retain(move |time, _| input.frontier.less_than(time.time()));
+                }
+            }
         )
 }
