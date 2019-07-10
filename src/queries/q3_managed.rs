@@ -7,7 +7,7 @@ use crate::event::{Auction, Person};
 
 use crate::queries::{NexmarkInput, NexmarkTimer};
 
-pub fn q3<S: Scope<Timestamp = usize>>(
+pub fn q3_managed<S: Scope<Timestamp = usize>>(
     input: &NexmarkInput,
     _nt: NexmarkTimer,
     scope: &mut S,

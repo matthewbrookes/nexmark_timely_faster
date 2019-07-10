@@ -15,7 +15,7 @@ impl FasterRmw for Prices {
     }
 }
 
-pub fn q6<S: Scope<Timestamp = usize>>(
+pub fn q6_managed<S: Scope<Timestamp = usize>>(
     input: &NexmarkInput,
     _nt: NexmarkTimer,
     scope: &mut S,

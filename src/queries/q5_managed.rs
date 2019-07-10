@@ -25,7 +25,7 @@ impl FasterRmw for AuctionBids {
     }
 }
 
-pub fn q5<S: Scope<Timestamp = usize>>(
+pub fn q5_managed<S: Scope<Timestamp = usize>>(
     input: &NexmarkInput,
     _nt: NexmarkTimer,
     scope: &mut S,

@@ -5,7 +5,7 @@ use timely::dataflow::{Scope, Stream};
 use std::collections::HashSet;
 use {crate::queries::NexmarkInput, crate::queries::NexmarkTimer};
 
-pub fn q8<S: Scope<Timestamp = usize>>(
+pub fn q8_managed<S: Scope<Timestamp = usize>>(
     input: &NexmarkInput,
     _nt: NexmarkTimer,
     scope: &mut S,

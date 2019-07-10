@@ -6,7 +6,7 @@ use crate::event::Date;
 
 use crate::queries::{NexmarkInput, NexmarkTimer};
 
-pub fn q7<S: Scope<Timestamp = usize>>(
+pub fn q7_managed<S: Scope<Timestamp = usize>>(
     input: &NexmarkInput,
     nt: NexmarkTimer,
     scope: &mut S,
