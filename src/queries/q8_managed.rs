@@ -2,28 +2,22 @@ use timely::dataflow::channels::pact::Exchange;
 use timely::dataflow::operators::{Map, Operator};
 use timely::dataflow::{Scope, Stream};
 
-use std::collections::HashSet;
-use {crate::queries::NexmarkInput, crate::queries::NexmarkTimer};
+use crate::queries::{NexmarkInput, NexmarkTimer};
 
 pub fn q8_managed<S: Scope<Timestamp = usize>>(
     input: &NexmarkInput,
-    _nt: NexmarkTimer,
+    nt: NexmarkTimer,
     scope: &mut S,
     window_size_ns: usize,
 ) -> Stream<S, usize> {
-    let auctions = input.auctions(scope).map(move |a| {
-        (
-            a.seller,
-            ((*a.date_time / window_size_ns) + 1) * window_size_ns,
-        )
-    });
+    let auctions = input.auctions(scope).map(|a| (a.seller, a.date_time));
 
-    let people = input
-        .people(scope)
-        .map(move |p| (p.id, ((*p.date_time / window_size_ns) + 1) * window_size_ns));
+    let people = input.auctions(scope).map(|p| (p.id, p.date_time));
 
-    let mut auction_state = scope.get_state_handle().get_managed_map("q8-auctions");
-    let mut people_state = scope.get_state_handle().get_managed_map("q8-people");
+    let mut new_people = scope.get_state_handle().get_managed_map("q8-new_people");
+    let mut auctions_state = scope.get_state_handle().get_managed_value("q8-auctions");
+
+    auctions_state.set(Vec::new());
 
     people.binary_notify(
         &auctions,
@@ -31,39 +25,42 @@ pub fn q8_managed<S: Scope<Timestamp = usize>>(
         Exchange::new(|a: &(usize, _)| a.0 as u64),
         "Q8 join",
         None,
-        move |a_input, p_input, output, notificator, _| {
-            let mut a_buffer = Vec::new();
-            a_input.for_each(|time, data| {
-                data.swap(&mut a_buffer);
-                for &(a_id, a_time) in a_buffer.iter() {
-                    notificator.notify_at(time.delayed(&a_time));
-                    auction_state.rmw(a_time, vec![a_id]);
+        move |input1, input2, output, notificator, _| {
+            // Notice new people.
+            input1.for_each(|time, data| {
+                notificator.notify_at(time.retain());
+                for (person, p_time) in data.iter().cloned() {
+                    new_people.insert(person, p_time);
                 }
             });
 
-            let mut p_buffer = Vec::new();
-            p_input.for_each(|time, data| {
-                data.swap(&mut p_buffer);
-                for &(p_id, p_time) in p_buffer.iter() {
-                    notificator.notify_at(time.delayed(&p_time));
-                    people_state.rmw(
-                        p_time,
-                        [p_id].iter().map(|x| *x).collect::<HashSet<usize>>(),
-                    );
-                }
+            // Notice new auctions.
+            input2.for_each(|time, data| {
+                let mut data_vec = vec![];
+                data.swap(&mut data_vec);
+                auctions_state.rmw(vec![(*time.time(), data_vec)]);
+                notificator.notify_at(time.retain());
             });
 
             notificator.for_each(|cap, _, _| {
-                if let Some(auctions_in_window) = auction_state.remove(cap.time()) {
-                    if let Some(new_people) = people_state.remove(cap.time()) {
+                let mut auctions_vec = auctions_state.take().unwrap_or(Vec::new());
+                for (capability_time, auctions) in auctions_vec.iter_mut() {
+                    if *capability_time <= *cap.time() {
                         let mut session = output.session(&cap);
-                        for seller in auctions_in_window {
-                            if new_people.contains(&seller) {
-                                session.give(seller);
+                        for &(person, time) in auctions.iter() {
+                            if time < nt.to_nexmark_time(*cap.time()) {
+                                if let Some(p_time) = new_people.get(&person) {
+                                    if *time < **p_time + window_size_ns {
+                                        session.give(person);
+                                    }
+                                }
                             }
                         }
                     }
+                    auctions.retain(|&(_, time)| time >= nt.to_nexmark_time(*cap.time()));
                 }
+                auctions_vec.retain(|&(_, ref list)| !list.is_empty());
+                auctions_state.set(auctions_vec);
             });
         },
     )
