@@ -267,10 +267,26 @@ fn main() {
                 });
             }
 
-            // Intermission: Close some auctions.
-            if queries.iter().any(|x| x.starts_with("q4") || x.starts_with("q6")) {
+            // Intermission: Close some auctions. Native.
+            if queries.iter().any(|x| *x == "q4" || *x == "q6") {
                 worker.dataflow::<_, _, _, InMemoryBackend>(|scope| {
                     ::nexmark::queries::q4_q6_common(&nexmark_input, nexmark_timer, scope)
+                        .capture_into(nexmark_input.closed_auctions.clone());
+                });
+            }
+
+            // Intermission: Close some auctions. In Mem.
+            if queries.iter().any(|x| *x == "q4_mem" || *x == "q6_mem") {
+                worker.dataflow::<_, _, _, FASTERBackend>(|scope| {
+                    ::nexmark::queries::q4_q6_common_managed(&nexmark_input, nexmark_timer, scope)
+                        .capture_into(nexmark_input.closed_auctions.clone());
+                });
+            }
+
+            // Intermission: Close some auctions. FASTER.
+            if queries.iter().any(|x| *x == "q4_faster" || *x == "q6_faster") {
+                worker.dataflow::<_, _, _, FASTERBackend>(|scope| {
+                    ::nexmark::queries::q4_q6_common_managed(&nexmark_input, nexmark_timer, scope)
                         .capture_into(nexmark_input.closed_auctions.clone());
                 });
             }
