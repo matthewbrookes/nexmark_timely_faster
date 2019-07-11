@@ -559,6 +559,7 @@ fn main() {
 
     statm_reporter_running.store(false, ::std::sync::atomic::Ordering::SeqCst);
 
+    /*
     let ::streaming_harness::timeline::Timeline {
         timeline,
         latency_metrics,
@@ -603,4 +604,5 @@ fn main() {
             timeline.clone()
         )
     );
+    */
 }
