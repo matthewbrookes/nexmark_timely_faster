@@ -24,9 +24,6 @@ pub fn q4_q6_common_managed<S: Scope<Timestamp = usize>>(
     let input_bids = input.bids(scope);
     let input_auctions = input.auctions(scope);
 
-    let mut state = scope.get_state_handle().get_managed_map("state");
-    let mut expires = scope.get_state_handle().get_managed_map("expires");
-
     fn is_valid_bid(bid: &Bid, auction: &Auction) -> bool {
         bid.price >= auction.reserve
             && auction.date_time <= bid.date_time
@@ -39,12 +36,13 @@ pub fn q4_q6_common_managed<S: Scope<Timestamp = usize>>(
         Exchange::new(|a: &Auction| a.id as u64),
         "Q4 Auction close",
         None,
-        move |input1, input2, output, notificator, _| {
+        move |input1, input2, output, notificator, state_handle| {
+            let mut state = state_handle.get_managed_map("state");
+            let mut expires = state_handle.get_managed_map("expires");
             // Record each bid.
             // NB: We don't summarize as the max, because we don't know which are valid.
             input1.for_each(|time, data| {
                 for bid in data.iter().cloned() {
-                    //                                        eprintln!("[{:?}] bid: {:?}", time.time().inner, bid);
                     let id = bid.auction;
                     let mut entry = state
                         .remove(&bid.auction)
@@ -63,7 +61,11 @@ pub fn q4_q6_common_managed<S: Scope<Timestamp = usize>>(
                             }
                         }
                     } else {
-                        expires.rmw(bid.date_time, vec![bid.auction]);
+                        let mut expiring_auctions =
+                            expires.remove(&bid.date_time).unwrap_or(Vec::new());
+                        expiring_auctions.push(bid.auction);
+                        expires.insert(bid.date_time, expiring_auctions);
+                        //expires.rmw(bid.date_time, vec![bid.auction]);
                         notificator.notify_at(time.delayed(&bid.date_time));
                         bids.push(bid);
                     }
@@ -75,7 +77,11 @@ pub fn q4_q6_common_managed<S: Scope<Timestamp = usize>>(
             input2.for_each(|time, data| {
                 for auction in data.iter().cloned() {
                     let id = auction.id;
-                    expires.rmw(auction.expires, vec![id]);
+                    let mut expiring_auctions =
+                        expires.remove(&auction.expires).unwrap_or(Vec::new());
+                    expiring_auctions.push(id);
+                    expires.insert(auction.expires, expiring_auctions);
+                    //expires.rmw(auction.expires, vec![id]);
                     notificator.notify_at(time.delayed(&auction.expires));
                     let mut entry = state
                         .remove(&auction.id)

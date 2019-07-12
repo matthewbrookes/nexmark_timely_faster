@@ -46,7 +46,10 @@ pub fn q3_managed<S: Scope<Timestamp = usize>>(
                             ));
                         }
                         let seller = auction.seller;
-                        state1.rmw(auction.seller, vec![auction]);
+                        //state1.rmw(auction.seller, vec![auction]);
+                        let mut seller_auctions = state1.remove(&seller).unwrap_or(Vec::new());
+                        seller_auctions.push(auction);
+                        state1.insert(seller, seller_auctions);
                     }
                 });
 

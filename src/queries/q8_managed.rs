@@ -14,18 +14,16 @@ pub fn q8_managed<S: Scope<Timestamp = usize>>(
 
     let people = input.auctions(scope).map(|p| (p.id, p.date_time));
 
-    let mut new_people = scope.get_state_handle().get_managed_map("q8-new_people");
-    let mut auctions_state = scope.get_state_handle().get_managed_value("q8-auctions");
-
-    auctions_state.set(Vec::new());
-
     people.binary_notify(
         &auctions,
         Exchange::new(|p: &(usize, _)| p.0 as u64),
         Exchange::new(|a: &(usize, _)| a.0 as u64),
         "Q8 join",
         None,
-        move |input1, input2, output, notificator, _| {
+        move |input1, input2, output, notificator, state_handle| {
+            let mut new_people = state_handle.get_managed_map("new_people");
+            let mut auctions_state = state_handle.get_managed_value("auctions");
+
             // Notice new people.
             input1.for_each(|time, data| {
                 notificator.notify_at(time.retain());
@@ -38,7 +36,10 @@ pub fn q8_managed<S: Scope<Timestamp = usize>>(
             input2.for_each(|time, data| {
                 let mut data_vec = vec![];
                 data.swap(&mut data_vec);
-                auctions_state.rmw(vec![(*time.time(), data_vec)]);
+                let mut stored_auctions = auctions_state.take().unwrap_or(Vec::new());
+                stored_auctions.push((*time.time(), data_vec));
+                auctions_state.set(stored_auctions);
+                //auctions_state.rmw(vec![(*time.time(), data_vec)]);
                 notificator.notify_at(time.retain());
             });
 
