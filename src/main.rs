@@ -245,7 +245,7 @@ fn main() {
 
             // Q3: Join some auctions. Native.
             if queries.iter().any(|x| *x == "q3") {
-                worker.dataflow::<_, _, _, FASTERBackend>(|scope, _| {
+                worker.dataflow::<_, _, _, InMemoryBackend>(|scope, _| {
                     ::nexmark::queries::q3(&nexmark_input, nexmark_timer, scope)
                         .probe_with(&mut probe);
                 });
@@ -277,7 +277,7 @@ fn main() {
 
             // Intermission: Close some auctions. In Mem.
             if queries.iter().any(|x| *x == "q4_mem" || *x == "q6_mem") {
-                worker.dataflow::<_, _, _, FASTERBackend>(|scope, _| {
+                worker.dataflow::<_, _, _, InMemoryBackend>(|scope, _| {
                     ::nexmark::queries::q4_q6_common_managed(&nexmark_input, nexmark_timer, scope)
                         .capture_into(nexmark_input.closed_auctions.clone());
                 });
@@ -293,7 +293,7 @@ fn main() {
 
             // Q4: Find average selling price per category. Native.
             if queries.iter().any(|x| *x == "q4") {
-                worker.dataflow::<_, _, _, FASTERBackend>(|scope, _| {
+                worker.dataflow::<_, _, _, InMemoryBackend>(|scope, _| {
                     ::nexmark::queries::q4(&nexmark_input, nexmark_timer, scope)
                         .probe_with(&mut probe);
                 });
