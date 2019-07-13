@@ -27,7 +27,7 @@ use timely::dataflow::channels::pact::Pipeline;
 use timely::dataflow::operators::Operator;
 use timely::dataflow::Scope;
 use timely::dataflow::Stream;
-use timely::state::backends::{FASTERBackend, InMemoryBackend};
+use timely::state::backends::{FASTERBackend, InMemoryBackend, InMemoryNativeBackend};
 use timely::ExchangeData;
 
 use nexmark::event::Event;
@@ -262,6 +262,14 @@ fn main() {
             // Q3: Join some auctions. In Mem.
             if queries.iter().any(|x| *x == "q3_mem") {
                 worker.dataflow::<_, _, _, InMemoryBackend>(|scope, _| {
+                    ::nexmark::queries::q3_managed(&nexmark_input, nexmark_timer, scope)
+                        .probe_with(&mut probe);
+                });
+            }
+
+            // Q3: Join some auctions. In Mem Native.
+            if queries.iter().any(|x| *x == "q3_mem_native") {
+                worker.dataflow::<_, _, _, InMemoryNativeBackend>(|scope, _| {
                     ::nexmark::queries::q3_managed(&nexmark_input, nexmark_timer, scope)
                         .probe_with(&mut probe);
                 });
@@ -559,7 +567,6 @@ fn main() {
 
     statm_reporter_running.store(false, ::std::sync::atomic::Ordering::SeqCst);
 
-    /*
     let ::streaming_harness::timeline::Timeline {
         timeline,
         latency_metrics,
@@ -567,6 +574,7 @@ fn main() {
     } = ::streaming_harness::output::combine_all(timelines);
 
     let latency_metrics = latency_metrics.into_inner();
+    /*
     println!(
         "DEBUG_summary\t{}",
         latency_metrics
@@ -593,10 +601,12 @@ fn main() {
             .collect::<Vec<_>>()
             .join("\n")
     );
+    */
 
     for (value, prob, count) in latency_metrics.ccdf() {
         println!("latency_ccdf\t{}\t{}\t{}", value, prob, count);
     }
+    /*
     println!(
         "{}",
         ::streaming_harness::format::format_summary_timeline(
