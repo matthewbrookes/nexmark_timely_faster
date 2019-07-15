@@ -1,16 +1,27 @@
 use timely::dataflow::channels::pact::Exchange;
-use timely::dataflow::operators::Operator;
+use timely::dataflow::operators::{Capability, Operator};
 use timely::dataflow::{Scope, Stream};
 
-use crate::event::{Auction, Bid};
+use crate::event::{Auction, Bid, Date};
 
 use crate::queries::{NexmarkInput, NexmarkTimer};
 use faster_rs::FasterRmw;
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 
 #[derive(Serialize, Deserialize)]
 struct AuctionBids(Option<Auction>, Vec<Bid>);
 
 impl FasterRmw for AuctionBids {
+    fn rmw(&self, _modification: Self) -> Self {
+        unimplemented!()
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct BidsHeap(BinaryHeap<(Reverse<Date>, usize)>);
+
+impl FasterRmw for BidsHeap {
     fn rmw(&self, _modification: Self) -> Self {
         unimplemented!()
     }
@@ -24,125 +35,17 @@ pub fn q4_q6_common_managed<S: Scope<Timestamp = usize>>(
     let input_bids = input.bids(scope);
     let input_auctions = input.auctions(scope);
 
-    fn is_valid_bid(bid: &Bid, auction: &Auction) -> bool {
-        bid.price >= auction.reserve
-            && auction.date_time <= bid.date_time
-            && bid.date_time < auction.expires
-    }
-
-    input_bids.binary_notify(
-        &input_auctions,
-        Exchange::new(|b: &Bid| b.auction as u64),
-        Exchange::new(|a: &Auction| a.id as u64),
-        "Q4 Auction close",
-        None,
-        move |input1, input2, output, notificator, state_handle| {
-            let mut state = state_handle.get_managed_map("state");
-            let mut expires = state_handle.get_managed_map("expires");
-            // Record each bid.
-            // NB: We don't summarize as the max, because we don't know which are valid.
-            input1.for_each(|time, data| {
-                for bid in data.iter().cloned() {
-                    let id = bid.auction;
-                    let mut entry = state
-                        .remove(&bid.auction)
-                        .unwrap_or(AuctionBids(None, Vec::new()));
-                    let bids = &mut entry.1;
-                    if let Some(ref auction) = entry.0 {
-                        debug_assert!(bids.len() <= 1);
-                        if is_valid_bid(&bid, auction) {
-                            // bid must fall between auction creation and expiration
-                            if let Some(existing) = bids.get(0).cloned() {
-                                if existing.price < bid.price {
-                                    bids[0] = bid;
-                                }
-                            } else {
-                                bids.push(bid);
-                            }
-                        }
-                    } else {
-                        let mut expiring_auctions =
-                            expires.remove(&bid.date_time).unwrap_or(Vec::new());
-                        expiring_auctions.push(bid.auction);
-                        expires.insert(bid.date_time, expiring_auctions);
-                        //expires.rmw(bid.date_time, vec![bid.auction]);
-                        notificator.notify_at(time.delayed(&bid.date_time));
-                        bids.push(bid);
-                    }
-                    state.insert(id, entry);
-                }
-            });
-
-            // Record each auction.
-            input2.for_each(|time, data| {
-                for auction in data.iter().cloned() {
-                    let id = auction.id;
-                    let mut expiring_auctions =
-                        expires.remove(&auction.expires).unwrap_or(Vec::new());
-                    expiring_auctions.push(id);
-                    expires.insert(auction.expires, expiring_auctions);
-                    //expires.rmw(auction.expires, vec![id]);
-                    notificator.notify_at(time.delayed(&auction.expires));
-                    let mut entry = state
-                        .remove(&auction.id)
-                        .unwrap_or(AuctionBids(None, Vec::new()));
-                    debug_assert!(entry.0.is_none());
-                    let bids = &mut entry.1;
-                    bids.retain(|bid| is_valid_bid(&bid, &auction));
-                    if let Some(bid) = bids.iter().max_by_key(|bid| bid.price).cloned() {
-                        bids.clear();
-                        bids.push(bid);
-                    }
-                    entry.0 = Some(auction);
-                    state.insert(id, entry);
-                }
-            });
-
-            notificator.for_each(|cap, _, _| {
-                //println!("Notified at {}", cap.time());
-                let mut session = output.session(&cap);
-                let time = nt.to_nexmark_time(*cap.time());
-                for auction in expires.remove(&time).unwrap() {
-                    if let Some(mut auction_bids) = state.remove(&auction) {
-                        let delete = {
-                            let bids = &mut auction_bids.1;
-                            if let Some(ref auction) = auction_bids.0 {
-                                if time == auction.expires {
-                                    // Auction expired, clean up state
-                                    if let Some(winner) = bids.pop() {
-                                        session.give((auction.clone(), winner));
-                                    }
-                                    true
-                                } else {
-                                    false
-                                }
-                            } else {
-                                bids.retain(|bid| bid.date_time > time);
-                                bids.is_empty()
-                            }
-                        };
-                        if !delete {
-                            state.insert(auction, auction_bids);
-                        }
-                    }
-                }
-            });
-        },
-    )
-
-    /*
     input_bids.binary_frontier(
         &input_auctions,
         Exchange::new(|b: &Bid| b.auction as u64),
         Exchange::new(|a: &Auction| a.id as u64),
         "Q4 Auction close",
         |_capability, _info, state_handle| {
-            let mut state: Box<ManagedMap<usize, AuctionBids>> =
-                state_handle.get_managed_map("state");
-            let mut opens = std::collections::BinaryHeap::new();
+            let mut state = state_handle.get_managed_map("state");
+            let mut opens = state_handle.get_managed_value("opens");
+            opens.set(BidsHeap(BinaryHeap::new()));
 
             let mut capability: Option<Capability<usize>> = None;
-            use std::cmp::Reverse;
 
             fn is_valid_bid(bid: &Bid, auction: &Auction) -> bool {
                 bid.price >= auction.reserve
@@ -154,27 +57,26 @@ pub fn q4_q6_common_managed<S: Scope<Timestamp = usize>>(
                 // Record each bid.
                 // NB: We don't summarize as the max, because we don't know which are valid.
                 input1.for_each(|time, data| {
+                    let mut opens_heap = opens.take().unwrap();
                     for bid in data.iter().cloned() {
-                        //                                        eprintln!("[{:?}] bid: {:?}", time.time().inner, bid);
-                        let id = bid.auction;
+                        let auction_id = bid.auction;
                         let mut entry = state
-                            .remove(&bid.auction)
+                            .remove(&auction_id)
                             .unwrap_or(AuctionBids(None, Vec::new()));
-                        let bids = &mut entry.1;
                         if let Some(ref auction) = entry.0 {
-                            debug_assert!(bids.len() <= 1);
+                            debug_assert!(entry.1.len() <= 1);
                             if is_valid_bid(&bid, auction) {
                                 // bid must fall between auction creation and expiration
-                                if let Some(existing) = bids.get(0).cloned() {
+                                if let Some(existing) = entry.1.get(0).cloned() {
                                     if existing.price < bid.price {
-                                        bids[0] = bid;
+                                        entry.1[0] = bid;
                                     }
                                 } else {
-                                    bids.push(bid);
+                                    entry.1.push(bid);
                                 }
                             }
                         } else {
-                            opens.push((Reverse(bid.date_time), bid.auction));
+                            opens_heap.0.push((Reverse(bid.date_time), auction_id));
                             if capability
                                 .as_ref()
                                 .map(|c| nt.to_nexmark_time(*c.time()) <= bid.date_time)
@@ -183,17 +85,18 @@ pub fn q4_q6_common_managed<S: Scope<Timestamp = usize>>(
                                 capability =
                                     Some(time.delayed(&nt.from_nexmark_time(bid.date_time)));
                             }
-                            bids.push(bid);
+                            entry.1.push(bid);
                         }
-                        state.insert(id, entry);
+                        state.insert(auction_id, entry);
                     }
+                    opens.set(opens_heap);
                 });
 
                 // Record each auction.
                 input2.for_each(|time, data| {
+                    let mut opens_heap = opens.take().unwrap();
                     for auction in data.iter().cloned() {
-                        let id = auction.id;
-                        //                                        eprintln!("[{:?}] auction: {:?}", time.time().inner, auction);
+                        let auction_id = auction.id;
                         if capability
                             .as_ref()
                             .map(|c| nt.to_nexmark_time(*c.time()) <= auction.expires)
@@ -201,20 +104,20 @@ pub fn q4_q6_common_managed<S: Scope<Timestamp = usize>>(
                         {
                             capability = Some(time.delayed(&nt.from_nexmark_time(auction.expires)));
                         }
-                        opens.push((Reverse(auction.expires), auction.id));
+                        opens_heap.0.push((Reverse(auction.expires), auction_id));
                         let mut entry = state
-                            .remove(&auction.id)
+                            .remove(&auction_id)
                             .unwrap_or(AuctionBids(None, Vec::new()));
                         debug_assert!(entry.0.is_none());
-                        let bids = &mut entry.1;
-                        bids.retain(|bid| is_valid_bid(&bid, &auction));
-                        if let Some(bid) = bids.iter().max_by_key(|bid| bid.price).cloned() {
-                            bids.clear();
-                            bids.push(bid);
+                        entry.1.retain(|bid| is_valid_bid(&bid, &auction));
+                        if let Some(bid) = entry.1.iter().max_by_key(|bid| bid.price).cloned() {
+                            entry.1.clear();
+                            entry.1.push(bid);
                         }
                         entry.0 = Some(auction);
-                        state.insert(id, entry);
+                        state.insert(auction_id, entry);
                     }
+                    opens.set(opens_heap);
                 });
 
                 // Use frontiers to determine which auctions to close.
@@ -234,40 +137,40 @@ pub fn q4_q6_common_managed<S: Scope<Timestamp = usize>>(
                     let complete = std::cmp::min(complete1, complete2);
 
                     let mut session = output.session(capability);
-                    while opens.peek().map(|x| {
+                    let mut opens_heap = opens.take().unwrap();
+                    while opens_heap.0.peek().map(|x| {
                         complete == usize::max_value() || (x.0).0 < nt.to_nexmark_time(complete)
                     }) == Some(true)
-                        {
-                            //                                        eprintln!("[{:?}] opens.len(): {} state.len(): {} {:?}", capability.time().inner, opens.len(), state.len(), state.iter().map(|x| (x.1).1.len()).sum::<usize>());
-
-                            let (Reverse(time), auction) = opens.pop().unwrap();
-                            if let Some(mut auction_bids) = state.remove(&auction) {
-                                let delete = {
-                                    let bids = &mut auction_bids.1;
-                                    if let Some(ref auction) = auction_bids.0 {
-                                        if time == auction.expires {
-                                            // Auction expired, clean up state
-                                            if let Some(winner) = bids.pop() {
-                                                session.give((auction.clone(), winner));
-                                            }
-                                            true
-                                        } else {
-                                            false
+                    {
+                        let (Reverse(time), auction) = opens_heap.0.pop().unwrap();
+                        if let Some(mut auction_bids) = state.remove(&auction) {
+                            let delete = {
+                                let bids = &mut auction_bids.1;
+                                if let Some(ref auction) = auction_bids.0 {
+                                    if time == auction.expires {
+                                        // Auction expired, clean up state
+                                        if let Some(winner) = bids.pop() {
+                                            session.give((auction.clone(), winner));
                                         }
+                                        true
                                     } else {
-                                        bids.retain(|bid| bid.date_time > time);
-                                        bids.is_empty()
+                                        false
                                     }
-                                };
-                                if !delete {
-                                    state.insert(auction, auction_bids);
+                                } else {
+                                    bids.retain(|bid| bid.date_time > time);
+                                    bids.is_empty()
                                 }
+                            };
+                            if !delete {
+                                state.insert(auction, auction_bids);
                             }
                         }
+                    }
+                    opens.set(opens_heap);
                 }
 
                 // Downgrade capability.
-                if let Some(head) = opens.peek() {
+                if let Some(head) = opens.get().unwrap().0.peek() {
                     capability
                         .as_mut()
                         .map(|c| c.downgrade(&nt.from_nexmark_time((head.0).0)));
@@ -277,5 +180,4 @@ pub fn q4_q6_common_managed<S: Scope<Timestamp = usize>>(
             }
         },
     )
-    */
 }
