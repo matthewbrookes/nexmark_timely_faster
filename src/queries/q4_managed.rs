@@ -3,7 +3,7 @@ use timely::dataflow::operators::{Map, Operator};
 use timely::dataflow::{Scope, Stream};
 
 use faster_rs::FasterRmw;
-use {crate::queries::NexmarkInput, crate::queries::NexmarkTimer};
+use crate::queries::{NexmarkInput, NexmarkTimer};
 
 #[derive(Serialize, Deserialize)]
 struct SumWithCount(usize, usize);
@@ -33,9 +33,11 @@ pub fn q4_managed<S: Scope<Timestamp = usize>>(
                     input.for_each(|time, data| {
                         let mut session = output.session(&time);
                         for (category, price) in data.iter().cloned() {
-                            state.rmw(category, SumWithCount(price, 1));
-                            let entry = state.get(&category).unwrap();
-                            session.give((category, entry.0 / entry.1));
+                            let mut current_sum_count = state.remove(&category).unwrap_or(SumWithCount(0, 0));
+                            current_sum_count.0 += price;
+                            current_sum_count.1 += 1;
+                            session.give((category, current_sum_count.0 / current_sum_count.1));
+                            state.insert(category, current_sum_count);
                         }
                     })
                 }
