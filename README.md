@@ -270,5 +270,5 @@ This will produce output similar to the following:
 
 The output is a list of tab-separated values on `stdout`.
 * `statm_RSS	13000189306	143388672`: RSS memory consumption of `143388672` bytes at time `13000189306`ns since start of application.
-* `latency_ccdf	229376	0.9262666064782057	851531`: latency CCDF value, `229376` measurements, smaller than `0.9262666064782057`% of all measurements, latency `851531`ns.
+* `latency_ccdf	229376	0.9262666064782057	851531`: latency CCDF value, `851531` measurements, smaller than `0.9262666064782057`% of all measurements, latency `229376`ns.
 * `summary_timeline	1250000000	425984	688128	950272	1179648	1245184	1245184	1310720`: Some percentiles at time `1250000000`ns: 25%, 50%, 75%, 99%, 99.9%, max in nanoseconds.
