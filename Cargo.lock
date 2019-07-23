@@ -208,11 +208,11 @@ dependencies = [
 [[package]]
 name = "faster-rs"
 version = "0.8.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/faster-rs/faster-rs.git?branch=print-size#f0c5b49916ffdb955ba84fb7c7eba1baf072cc38"
 dependencies = [
  "bincode 1.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.60 (registry+https://github.com/rust-lang/crates.io-index)",
- "libfaster-sys 0.8.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libfaster-sys 0.8.3 (git+https://github.com/faster-rs/faster-rs.git?branch=print-size)",
  "serde 1.0.97 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.97 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -286,7 +286,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "libfaster-sys"
 version = "0.8.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/faster-rs/faster-rs.git?branch=print-size#f0c5b49916ffdb955ba84fb7c7eba1baf072cc38"
 dependencies = [
  "bindgen 0.50.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cmake 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -322,14 +322,14 @@ dependencies = [
  "abomonation 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "abomonation_derive 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "faster-rs 0.8.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "faster-rs 0.8.5 (git+https://github.com/faster-rs/faster-rs.git?branch=print-size)",
  "hdrhist 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.97 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.97 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "streaming-harness 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "timely 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate)",
+ "timely 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate_size)",
 ]
 
 [[package]]
@@ -712,51 +712,51 @@ dependencies = [
 [[package]]
 name = "timely"
 version = "0.9.0"
-source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate#8e96db2c0f8c1c205ae2edeaddba507908d3d9b4"
+source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate_size#701a7872bd9e6663c5376f5b8a08f9b417cc1a8e"
 dependencies = [
  "abomonation 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "abomonation_derive 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "faster-rs 0.8.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "faster-rs 0.8.5 (git+https://github.com/faster-rs/faster-rs.git?branch=print-size)",
  "serde 1.0.97 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.97 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "timely_bytes 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate)",
- "timely_communication 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate)",
- "timely_logging 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate)",
- "timely_state 0.1.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate)",
+ "timely_bytes 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate_size)",
+ "timely_communication 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate_size)",
+ "timely_logging 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate_size)",
+ "timely_state 0.1.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate_size)",
 ]
 
 [[package]]
 name = "timely_bytes"
 version = "0.9.0"
-source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate#8e96db2c0f8c1c205ae2edeaddba507908d3d9b4"
+source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate_size#701a7872bd9e6663c5376f5b8a08f9b417cc1a8e"
 
 [[package]]
 name = "timely_communication"
 version = "0.9.0"
-source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate#8e96db2c0f8c1c205ae2edeaddba507908d3d9b4"
+source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate_size#701a7872bd9e6663c5376f5b8a08f9b417cc1a8e"
 dependencies = [
  "abomonation 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "abomonation_derive 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "getopts 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.97 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.97 (registry+https://github.com/rust-lang/crates.io-index)",
- "timely_bytes 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate)",
- "timely_logging 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate)",
+ "timely_bytes 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate_size)",
+ "timely_logging 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate_size)",
 ]
 
 [[package]]
 name = "timely_logging"
 version = "0.9.0"
-source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate#8e96db2c0f8c1c205ae2edeaddba507908d3d9b4"
+source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate_size#701a7872bd9e6663c5376f5b8a08f9b417cc1a8e"
 
 [[package]]
 name = "timely_state"
 version = "0.1.0"
-source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate#8e96db2c0f8c1c205ae2edeaddba507908d3d9b4"
+source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate_size#701a7872bd9e6663c5376f5b8a08f9b417cc1a8e"
 dependencies = [
  "bincode 1.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "faster-rs 0.8.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "faster-rs 0.8.5 (git+https://github.com/faster-rs/faster-rs.git?branch=print-size)",
  "tempfile 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -864,7 +864,7 @@ dependencies = [
 "checksum cmake 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)" = "2ca4386c8954b76a8415b63959337d940d724b336cabd3afe189c2b51a7e1ff0"
 "checksum env_logger 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "aafcde04e90a5226a6443b7aabdb016ba2f8307c847d524724bd9b346dd1a2d3"
 "checksum failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "795bd83d3abeb9220f257e597aa0080a508b27533824adf336529648f6abf7e2"
-"checksum faster-rs 0.8.5 (registry+https://github.com/rust-lang/crates.io-index)" = "df3c33f96d3490cb5dda7ac8320d762f62e369c67f05a9e85d1e9664f69bd50f"
+"checksum faster-rs 0.8.5 (git+https://github.com/faster-rs/faster-rs.git?branch=print-size)" = "<none>"
 "checksum fuchsia-cprng 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
 "checksum fxhash 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
 "checksum getopts 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)" = "72327b15c228bfe31f1390f93dd5e9279587f0463836393c9df719ce62a3e450"
@@ -875,7 +875,7 @@ dependencies = [
 "checksum itoa 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "501266b7edd0174f8530248f87f99c88fbe60ca4ef3dd486835b8d8d53136f7f"
 "checksum lazy_static 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bc5729f27f159ddd61f4df6228e827e86643d4d3e7c32183cb30a1c08f604a14"
 "checksum libc 0.2.60 (registry+https://github.com/rust-lang/crates.io-index)" = "d44e80633f007889c7eff624b709ab43c92d708caad982295768a7b13ca3b5eb"
-"checksum libfaster-sys 0.8.3 (registry+https://github.com/rust-lang/crates.io-index)" = "dfca41856d8d57bb0a9d0bb8e9412d28d9c47dfad4828f3e4f598bf582af570f"
+"checksum libfaster-sys 0.8.3 (git+https://github.com/faster-rs/faster-rs.git?branch=print-size)" = "<none>"
 "checksum libloading 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "f2b111a074963af1d37a139918ac6d49ad1d0d5e47f72fd55388619691a7d753"
 "checksum log 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)" = "c275b6ad54070ac2d665eef9197db647b32239c9d244bfb6f041a766d00da5b3"
 "checksum memchr 2.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "88579771288728879b57485cc7d6b07d648c9f0141eb955f8ab7f9d45394468e"
@@ -925,11 +925,11 @@ dependencies = [
 "checksum termcolor 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)" = "96d6098003bde162e4277c70665bd87c326f5a0c3f3fbfb285787fa482d54e6e"
 "checksum textwrap 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
 "checksum thread_local 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "c6b53e329000edc2b34dbe8545fd20e55a333362d0a321909685a19bd28c3f1b"
-"checksum timely 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate)" = "<none>"
-"checksum timely_bytes 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate)" = "<none>"
-"checksum timely_communication 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate)" = "<none>"
-"checksum timely_logging 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate)" = "<none>"
-"checksum timely_state 0.1.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate)" = "<none>"
+"checksum timely 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate_size)" = "<none>"
+"checksum timely_bytes 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate_size)" = "<none>"
+"checksum timely_communication 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate_size)" = "<none>"
+"checksum timely_logging 0.9.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate_size)" = "<none>"
+"checksum timely_state 0.1.0 (git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate_size)" = "<none>"
 "checksum ucd-util 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "fa9b3b49edd3468c0e6565d85783f51af95212b6fa3986a5500954f00b460874"
 "checksum unicode-width 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "882386231c45df4700b275c7ff55b6f3698780a650026380e72dabe76fa46526"
 "checksum unicode-xid 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "8c1f860d7d29cf02cb2f3f359fd35991af3d30bac52c57d265a3c461074cb4dc"
