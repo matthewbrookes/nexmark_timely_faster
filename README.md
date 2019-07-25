@@ -1,6 +1,6 @@
 # NEXMark benchmark for Timely with FASTER
 
-A lot of this implementation is derived from Moritz Hoffman's implementation in [Megaphone](https://github.com/strymon-system/megaphone)
+A lot of this implementation is derived from the implementation in [Megaphone](https://github.com/strymon-system/megaphone), mostly written by Moritz Hoffman and Frank McSherry.
 
 ## Running a Query
 Each query can be run for a specified duration (in seconds) and with a given event generation rate
