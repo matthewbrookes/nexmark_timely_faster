@@ -742,7 +742,6 @@ fn main() {
     for (value, prob, count) in latency_metrics.ccdf() {
         println!("latency_ccdf\t{}\t{}\t{}", value, prob, count);
     }
-    /*
     println!(
         "{}",
         ::streaming_harness::format::format_summary_timeline(
@@ -750,5 +749,4 @@ fn main() {
             timeline.clone()
         )
     );
-    */
 }
