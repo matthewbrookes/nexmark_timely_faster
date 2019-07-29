@@ -23,8 +23,8 @@ pub fn q3<S: Scope<Timestamp = usize>>(
 
     auctions.binary(
         &people,
-        Exchange::new(|a: &Auction| a.seller as u64),
-        Exchange::new(|p: &Person| p.id as u64),
+        Exchange::new(|a: &Auction| a.seller as u64 / 100),
+        Exchange::new(|p: &Person| p.id as u64 / 100),
         "Q3 Join",
         |_capability, _info, _state_handle| {
             let mut state1 = HashMap::new();
