@@ -240,10 +240,10 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "lazy_static 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cfg-if 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.60 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -274,9 +274,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "lazy_static"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "spin 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "libc"
@@ -408,7 +405,7 @@ name = "rand"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "getrandom 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "getrandom 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.60 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_chacha 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -451,7 +448,7 @@ name = "rand_core"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "getrandom 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "getrandom 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -600,11 +597,6 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "spin"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
 name = "streaming-harness"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -711,7 +703,7 @@ dependencies = [
 [[package]]
 name = "timely"
 version = "0.9.0"
-source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate#086343f880ca117f212b5ce9260ec26f91cc6402"
+source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate#6099be5f2d66901bcf1640198b0031ed010969fe"
 dependencies = [
  "abomonation 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "abomonation_derive 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -728,12 +720,12 @@ dependencies = [
 [[package]]
 name = "timely_bytes"
 version = "0.9.0"
-source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate#086343f880ca117f212b5ce9260ec26f91cc6402"
+source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate#6099be5f2d66901bcf1640198b0031ed010969fe"
 
 [[package]]
 name = "timely_communication"
 version = "0.9.0"
-source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate#086343f880ca117f212b5ce9260ec26f91cc6402"
+source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate#6099be5f2d66901bcf1640198b0031ed010969fe"
 dependencies = [
  "abomonation 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "abomonation_derive 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -747,12 +739,12 @@ dependencies = [
 [[package]]
 name = "timely_logging"
 version = "0.9.0"
-source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate#086343f880ca117f212b5ce9260ec26f91cc6402"
+source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate#6099be5f2d66901bcf1640198b0031ed010969fe"
 
 [[package]]
 name = "timely_state"
 version = "0.1.0"
-source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate#086343f880ca117f212b5ce9260ec26f91cc6402"
+source = "git+https://github.com/matthewbrookes/timely-dataflow.git?branch=state_crate#6099be5f2d66901bcf1640198b0031ed010969fe"
 dependencies = [
  "bincode 1.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "faster-rs 0.8.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -867,7 +859,7 @@ dependencies = [
 "checksum fuchsia-cprng 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
 "checksum fxhash 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
 "checksum getopts 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)" = "72327b15c228bfe31f1390f93dd5e9279587f0463836393c9df719ce62a3e450"
-"checksum getrandom 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "e65cce4e5084b14874c4e7097f38cab54f47ee554f9194673456ea379dcc4c55"
+"checksum getrandom 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "cd8e190892c840661957ba9f32dacfb3eb405e657f9f9f60485605f0bb37d6f8"
 "checksum glob 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 "checksum hdrhist 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "51b22edfb537aaffec56e77d3116a1dd0a0fa8bb5a8bd7d6d4a522132c9bb383"
 "checksum humantime 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3ca7e5f2e110db35f93b837c81797f3714500b81d517bf20c431b16d3ca4f114"
@@ -911,7 +903,6 @@ dependencies = [
 "checksum serde_derive 1.0.98 (registry+https://github.com/rust-lang/crates.io-index)" = "01e69e1b8a631f245467ee275b8c757b818653c6d704cdbcaeb56b56767b529c"
 "checksum serde_json 1.0.40 (registry+https://github.com/rust-lang/crates.io-index)" = "051c49229f282f7c6f3813f8286cc1e3323e8051823fce42c7ea80fe13521704"
 "checksum shlex 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7fdf1b9db47230893d76faad238fd6097fd6d6a9245cd7a4d90dbd639536bbd2"
-"checksum spin 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "44363f6f51401c34e7be73db0db371c04705d35efbe9f7d6082e03a921a32c55"
 "checksum streaming-harness 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "47ad8b8decd31449edbbe224e7ba3580857ed93637e711abe5a74b8cba0b6a54"
 "checksum streaming-harness-hdrhist 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5ab259e5b2ffa36f459fabd35a9c34576df3f6f39c12c1d9d5e994b2cd1e11d2"
 "checksum strsim 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"

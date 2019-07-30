@@ -139,7 +139,7 @@ fn main() {
     // define a new computational scope, in which to run NEXMark queries
     let timelines: Vec<_> = timely::execute_from_args(
         timely_args.into_iter(),
-        move |worker, _node_state_handle| {
+        move |worker, node_state_handle| {
             let peers = worker.peers();
             let index = worker.index();
 
@@ -260,6 +260,14 @@ fn main() {
                 if queries.iter().any(|x| *x == "q3_faster") {
                     worker.dataflow::<_, _, _, FASTERBackend>(|scope, _| {
                         ::nexmark::queries::q3_managed(&nexmark_input, nexmark_timer, scope)
+                            .probe_with(&mut probe);
+                    });
+                }
+
+                // Q3: Join some auctions. FASTER One Instance Per Node.
+                if queries.iter().any(|x| *x == "q3_faster_node") {
+                    worker.dataflow::<_, _, _, FASTERBackend>(|scope, _| {
+                        ::nexmark::queries::q3_managed_node(&nexmark_input, nexmark_timer, scope, &node_state_handle)
                             .probe_with(&mut probe);
                     });
                 }
