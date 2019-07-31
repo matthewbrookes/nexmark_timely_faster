@@ -266,7 +266,7 @@ fn main() {
 
                 // Q3: Join some auctions. FASTER One Instance Per Node.
                 if queries.iter().any(|x| *x == "q3_faster_node") {
-                    worker.dataflow::<_, _, _, FASTERBackend>(|scope, _| {
+                    worker.dataflow::<_, _, _, InMemoryBackend>(|scope, _| {
                         ::nexmark::queries::q3_managed_node(&nexmark_input, nexmark_timer, scope, &node_state_handle)
                             .probe_with(&mut probe);
                     });
