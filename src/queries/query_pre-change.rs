@@ -1,19 +1,19 @@
+use std::collections::HashMap;
+use std::rc::Rc;
 use timely::dataflow::channels::pact::Exchange;
 use timely::dataflow::operators::{Filter, Operator};
 use timely::dataflow::{Scope, Stream};
-use timely::state::StateHandle;
-use timely::state::backends::FASTERNodeBackend;
+use timely::state::backends::FASTERBackend;
 use timely::state::primitives::ManagedMap;
 
 use crate::event::{Auction, Person};
 
 use crate::queries::{NexmarkInput, NexmarkTimer};
 
-pub fn q3_managed_node<S: Scope<Timestamp = usize>>(
+pub fn q3<S: Scope<Timestamp = usize>>(
     input: &NexmarkInput,
     _nt: NexmarkTimer,
     scope: &mut S,
-    node_state_handle: &StateHandle<FASTERNodeBackend>
 ) -> Stream<S, (String, String, String, usize)> {
     let auctions = input.auctions(scope).filter(|a| a.category == 10);
 
@@ -24,16 +24,14 @@ pub fn q3_managed_node<S: Scope<Timestamp = usize>>(
     let mut auctions_buffer = vec![];
     let mut people_buffer = vec![];
 
-    let mut state1: Box<ManagedMap<usize, Vec<Auction>>> =
-        node_state_handle.get_managed_map("state1");
-    let mut state2: Box<ManagedMap<usize, Person>> = node_state_handle.get_managed_map("state2");
-
     auctions.binary(
         &people,
         Exchange::new(|a: &Auction| a.seller as u64 / 100),
         Exchange::new(|p: &Person| p.id as u64 / 100),
         "Q3 Join",
-        move |_capability, _info, _state_handle| {
+        |_capability, _info, state_handle| {
+            let mut state1 = HashMap::new();
+            let mut state2 = HashMap::new();
 
             move |input1, input2, output| {
                 // Process each input auction.
@@ -41,7 +39,8 @@ pub fn q3_managed_node<S: Scope<Timestamp = usize>>(
                     data.swap(&mut auctions_buffer);
                     let mut session = output.session(&time);
                     for auction in auctions_buffer.drain(..) {
-                        if let Some(person) = state2.get(&auction.seller) {
+                        let maybe_person: Option<&Person> = state2.get(&auction.seller);
+                        if let Some(person) = maybe_person {
                             session.give((
                                 person.name.clone(),
                                 person.city.clone(),
@@ -50,10 +49,9 @@ pub fn q3_managed_node<S: Scope<Timestamp = usize>>(
                             ));
                         }
                         let seller = auction.seller;
-                        //state1.rmw(auction.seller, vec![auction]);
-                        let mut seller_auctions = state1.remove(&seller).unwrap_or(Vec::new());
-                        seller_auctions.push(auction);
-                        state1.insert(seller, seller_auctions);
+                        let mut auctions = state1.remove(&seller).unwrap_or(Vec::new());
+                        auctions.push(auction);
+                        state1.insert(seller, auctions);
                     }
                 });
 
