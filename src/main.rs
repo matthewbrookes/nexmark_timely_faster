@@ -161,7 +161,7 @@ fn main() {
                     },
                 );
 
-                worker.dataflow::<_, _, _, InMemoryBackend>(|scope, _| {
+                worker.dataflow::<_, _, _, InMemoryBackend>(|scope, worker_state_handle| {
                     ::nexmark::queries::q3(&nexmark_input, nexmark_timer, scope)
                         .probe_with(&mut probe);
                 });
