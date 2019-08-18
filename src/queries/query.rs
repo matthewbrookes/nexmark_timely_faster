@@ -30,8 +30,8 @@ pub fn q3<S: Scope<Timestamp = usize>>(
         Exchange::new(|p: &Person| p.id as u64 / 100),
         "Q3 Join",
         |_capability, _info, state_handle| {
-            let mut state1 = HashMap::new();
-            let mut state2 = HashMap::new();
+            let mut auctions_state = HashMap::new();
+            let mut people_state = HashMap::new();
 
             move |input1, input2, output| {
                 // Process each input auction.
@@ -39,7 +39,7 @@ pub fn q3<S: Scope<Timestamp = usize>>(
                     data.swap(&mut auctions_buffer);
                     let mut session = output.session(&time);
                     for auction in auctions_buffer.drain(..) {
-                        let maybe_person: Option<&Person> = state2.get(&auction.seller);
+                        let maybe_person: Option<&Person> = people_state.get(&auction.seller);
                         if let Some(person) = maybe_person {
                             session.give((
                                 person.name.clone(),
@@ -49,9 +49,9 @@ pub fn q3<S: Scope<Timestamp = usize>>(
                             ));
                         }
                         let seller = auction.seller;
-                        let mut auctions = state1.remove(&seller).unwrap_or(Vec::new());
+                        let mut auctions = auctions_state.remove(&seller).unwrap_or(Vec::new());
                         auctions.push(auction);
-                        state1.insert(seller, auctions);
+                        auctions_state.insert(seller, auctions);
                     }
                 });
 
@@ -60,7 +60,7 @@ pub fn q3<S: Scope<Timestamp = usize>>(
                     data.swap(&mut people_buffer);
                     let mut session = output.session(&time);
                     for person in people_buffer.drain(..) {
-                        if let Some(auctions) = state1.get(&person.id) {
+                        if let Some(auctions) = auctions_state.get(&person.id) {
                             for auction in auctions.iter() {
                                 session.give((
                                     person.name.clone(),
@@ -70,7 +70,7 @@ pub fn q3<S: Scope<Timestamp = usize>>(
                                 ));
                             }
                         }
-                        state2.insert(person.id, person);
+                        people_state.insert(person.id, person);
                     }
                 });
             }
