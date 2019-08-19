@@ -31,7 +31,7 @@ pub fn q3<S: Scope<Timestamp = usize>>(
         "Q3 Join",
         |_capability, _info, state_handle| {
             let mut auctions_state = HashMap::new();
-            let mut people_state = HashMap::new();
+            let mut people_state   = HashMap::new();
 
             move |input1, input2, output| {
                 // Process each input auction.
