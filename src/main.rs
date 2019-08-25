@@ -162,7 +162,7 @@ fn main() {
                 );
 
                 worker.dataflow::<_, _, _, InMemoryBackend>(|scope, worker_state_handle| {
-                    ::nexmark::queries::q3(&nexmark_input, nexmark_timer, scope)
+                    ::nexmark::queries::q3_managed(&nexmark_input, nexmark_timer, scope)
                         .probe_with(&mut probe);
                 });
             }

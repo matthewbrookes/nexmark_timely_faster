@@ -1,6 +1,9 @@
+use std::collections::HashMap;
+use std::rc::Rc;
 use timely::dataflow::channels::pact::Exchange;
 use timely::dataflow::operators::{Filter, Operator};
 use timely::dataflow::{Scope, Stream};
+use timely::state::backends::FASTERBackend;
 use timely::state::primitives::ManagedMap;
 
 use crate::event::{Auction, Person};
@@ -21,15 +24,14 @@ pub fn q3_managed<S: Scope<Timestamp = usize>>(
     let mut auctions_buffer = vec![];
     let mut people_buffer = vec![];
 
-    auctions.binary(
+    auctions.binary_core::<_,_,_,_,_,_,FASTERBackend>(
         &people,
         Exchange::new(|a: &Auction| a.seller as u64 / 100),
         Exchange::new(|p: &Person| p.id as u64 / 100),
         "Q3 Join",
         |_capability, _info, state_handle| {
-            let mut state1: Box<ManagedMap<usize, Vec<Auction>>> =
-                state_handle.get_managed_map("state1");
-            let mut state2: Box<ManagedMap<usize, Person>> = state_handle.get_managed_map("state2");
+            let mut auctions_state = state_handle.get_managed_map("auctions");
+            let mut people_state   = state_handle.get_managed_map("people");
 
             move |input1, input2, output| {
                 // Process each input auction.
@@ -37,7 +39,8 @@ pub fn q3_managed<S: Scope<Timestamp = usize>>(
                     data.swap(&mut auctions_buffer);
                     let mut session = output.session(&time);
                     for auction in auctions_buffer.drain(..) {
-                        if let Some(person) = state2.get(&auction.seller) {
+                        let maybe_person: Option<Rc<Person>> = people_state.get(&auction.seller);
+                        if let Some(person) = maybe_person {
                             session.give((
                                 person.name.clone(),
                                 person.city.clone(),
@@ -46,9 +49,9 @@ pub fn q3_managed<S: Scope<Timestamp = usize>>(
                             ));
                         }
                         let seller = auction.seller;
-                        let mut seller_auctions = state1.remove(&seller).unwrap_or(Vec::new());
-                        seller_auctions.push(auction);
-                        state1.insert(seller, seller_auctions);
+                        let mut auctions = auctions_state.remove(&seller).unwrap_or(Vec::new());
+                        auctions.push(auction);
+                        auctions_state.insert(seller, auctions);
                     }
                 });
 
@@ -57,7 +60,7 @@ pub fn q3_managed<S: Scope<Timestamp = usize>>(
                     data.swap(&mut people_buffer);
                     let mut session = output.session(&time);
                     for person in people_buffer.drain(..) {
-                        if let Some(auctions) = state1.get(&person.id) {
+                        if let Some(auctions) = auctions_state.get(&person.id) {
                             for auction in auctions.iter() {
                                 session.give((
                                     person.name.clone(),
@@ -67,7 +70,7 @@ pub fn q3_managed<S: Scope<Timestamp = usize>>(
                                 ));
                             }
                         }
-                        state2.insert(person.id, person);
+                        people_state.insert(person.id, person);
                     }
                 });
             }

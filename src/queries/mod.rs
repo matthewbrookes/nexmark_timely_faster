@@ -5,10 +5,8 @@ use timely::dataflow::{Scope, Stream};
 
 use crate::event::{Auction, Bid, Date, Person};
 
-mod query;
 mod query_managed;
 
-pub use self::query::q3;
 pub use self::query_managed::q3_managed;
 
 pub struct NexmarkInput<'a> {
