@@ -28,7 +28,7 @@ use timely::dataflow::operators::Operator;
 use timely::dataflow::Scope;
 use timely::dataflow::Stream;
 use timely::state::backends::{
-    FASTERBackend, FASTERInMemoryBackend, InMemoryBackend, InMemoryNativeBackend,
+    FASTERBackend, FASTERInMemoryBackend, InMemoryBackend, InMemoryNativeBackend, RocksDBBackend
 };
 use timely::ExchangeData;
 
@@ -264,6 +264,14 @@ fn main() {
                     });
                 }
 
+                // Q3: Join some auctions. RocksDB.
+                if queries.iter().any(|x| *x == "q3_rocksdb") {
+                    worker.dataflow::<_, _, _, RocksDBBackend>(|scope, _| {
+                        ::nexmark::queries::q3_managed(&nexmark_input, nexmark_timer, scope)
+                            .probe_with(&mut probe);
+                    });
+                }
+
                 // Q3: Join some auctions. FASTER One Instance Per Node.
                 if queries.iter().any(|x| *x == "q3_faster_node") {
                     worker.dataflow::<_, _, _, InMemoryBackend>(|scope, _| {
@@ -346,6 +354,21 @@ fn main() {
                     });
                 }
 
+                // Intermission: Close some auctions. RocksDB.
+                if queries
+                    .iter()
+                    .any(|x| *x == "q4_rocksdb" || *x == "q6_rocksdb")
+                {
+                    worker.dataflow::<_, _, _, RocksDBBackend>(|scope, _| {
+                        ::nexmark::queries::q4_q6_common_managed(
+                            &nexmark_input,
+                            nexmark_timer,
+                            scope,
+                        )
+                            .capture_into(nexmark_input.closed_auctions.clone());
+                    });
+                }
+
                 // Q4: Find average selling price per category. Native.
                 if queries.iter().any(|x| *x == "q4") {
                     worker.dataflow::<_, _, _, InMemoryBackend>(|scope, _| {
@@ -365,6 +388,14 @@ fn main() {
                 // Q4: Find average selling price per category. FASTER.
                 if queries.iter().any(|x| *x == "q4_faster") {
                     worker.dataflow::<_, _, _, FASTERBackend>(|scope, _| {
+                        ::nexmark::queries::q4_managed(&nexmark_input, nexmark_timer, scope)
+                            .probe_with(&mut probe);
+                    });
+                }
+
+                // Q4: Find average selling price per category. RocksDB.
+                if queries.iter().any(|x| *x == "q4_rocksdb") {
+                    worker.dataflow::<_, _, _, RocksDBBackend>(|scope, _| {
                         ::nexmark::queries::q4_managed(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -432,6 +463,24 @@ fn main() {
                     });
                 }
 
+                // Q5. Hot Items. RocksDB.
+                if queries.iter().any(|x| *x == "q5_rocksdb") {
+                    // 60s windows, ticking in 1s intervals
+                    // NEXMark default is 60 minutes, ticking in one minute intervals
+                    let window_slice_count = 60;
+                    let window_slide_ns = 1_000_000_000;
+                    worker.dataflow::<_, _, _, RocksDBBackend>(|scope, _| {
+                        ::nexmark::queries::q5_managed(
+                            &nexmark_input,
+                            nexmark_timer,
+                            scope,
+                            window_slice_count,
+                            window_slide_ns,
+                        )
+                            .probe_with(&mut probe);
+                    });
+                }
+
                 // Q5. Hot Items. FASTER In Mem.
                 if queries.iter().any(|x| *x == "q5_faster_in_mem") {
                     // 60s windows, ticking in 1s intervals
@@ -469,6 +518,14 @@ fn main() {
                 // Q6. Avg selling price per seller. FASTER.
                 if queries.iter().any(|x| *x == "q6_faster") {
                     worker.dataflow::<_, _, _, FASTERBackend>(|scope, _| {
+                        ::nexmark::queries::q6_managed(&nexmark_input, nexmark_timer, scope)
+                            .probe_with(&mut probe);
+                    });
+                }
+
+                // Q6. Avg selling price per seller. RocksDB.
+                if queries.iter().any(|x| *x == "q6_rocksdb") {
+                    worker.dataflow::<_, _, _, RocksDBBackend>(|scope, _| {
                         ::nexmark::queries::q6_managed(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -527,6 +584,22 @@ fn main() {
                             window_size_ns,
                         )
                         .probe_with(&mut probe);
+                    });
+                }
+
+                // Q7. Highest Bid. RocksDB.
+                if queries.iter().any(|x| *x == "q7_rocksdb") {
+                    worker.dataflow::<_, _, _, RocksDBBackend>(|scope, _| {
+                        // Window ticks every 10 seconds.
+                        // NEXMark default is different: ticks every 60s
+                        let window_size_ns = 10_000_000_000;
+                        ::nexmark::queries::q7_managed(
+                            &nexmark_input,
+                            nexmark_timer,
+                            scope,
+                            window_size_ns,
+                        )
+                            .probe_with(&mut probe);
                     });
                 }
 
@@ -591,6 +664,22 @@ fn main() {
                             window_size_ns,
                         )
                         .probe_with(&mut probe);
+                    });
+                }
+
+                // Q8. Monitor new users. RocksDB.
+                if queries.iter().any(|x| *x == "q8_rocksdb") {
+                    worker.dataflow::<_, _, _, RocksDBBackend>(|scope, _| {
+                        // Window ticks every 12 minutes.
+                        // NEXMark default is different: ticks every 12h
+                        let window_size_ns = 720 * 1_000_000_000;
+                        ::nexmark::queries::q8_managed(
+                            &nexmark_input,
+                            nexmark_timer,
+                            scope,
+                            window_size_ns,
+                        )
+                            .probe_with(&mut probe);
                     });
                 }
 
