@@ -6,7 +6,6 @@ extern crate serde_json;
 extern crate timely;
 #[macro_use]
 extern crate serde_derive;
-extern crate faster_rs;
 extern crate rand;
 extern crate streaming_harness;
 
