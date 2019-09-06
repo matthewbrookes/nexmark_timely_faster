@@ -19,7 +19,7 @@ pub fn q8<S: Scope<Timestamp = usize>>(
         Exchange::new(|p: &(usize, _)| p.0 as u64),
         Exchange::new(|a: &(usize, _)| a.0 as u64),
         "Q8 join",
-        |_capability, _info, _state_handle| {
+        |_capability, _info| {
             let mut new_people = std::collections::HashMap::new();
             let mut auctions = Vec::new();
 

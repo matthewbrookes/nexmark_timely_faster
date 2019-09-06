@@ -16,7 +16,7 @@ pub fn q6<S: Scope<Timestamp = usize>>(
         .unary(
             Exchange::new(|x: &(usize, usize)| x.0 as u64),
             "Q6 Average",
-            |_cap, _info, _state_handle| {
+            |_cap, _info| {
                 // Store bidder -> [prices; 10]
                 let mut state = std::collections::HashMap::new();
 

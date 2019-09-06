@@ -15,7 +15,7 @@ pub fn q4<S: Scope<Timestamp = usize>>(
         .unary(
             Exchange::new(|x: &(usize, usize)| x.0 as u64),
             "Q4 Average",
-            |_cap, _info, _state_handle| {
+            |_cap, _info| {
                 // Stores category -> (total, count)
                 let mut state = std::collections::HashMap::new();
 

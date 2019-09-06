@@ -20,7 +20,7 @@ pub fn q7<S: Scope<Timestamp = usize>>(
                 b.price,
             )
         })
-        .unary_frontier(Pipeline, "Q7 Pre-reduce", |_cap, _info, _state_handle| {
+        .unary_frontier(Pipeline, "Q7 Pre-reduce", |_cap, _info| {
             // Tracks the worker-local maximal bid for each capability.
             let mut maxima = Vec::<(Capability<usize>, usize)>::new();
 
@@ -54,7 +54,7 @@ pub fn q7<S: Scope<Timestamp = usize>>(
         .unary_frontier(
             Exchange::new(move |x: &(usize, usize)| (x.0 / window_size_ns) as u64),
             "Q7 All-reduce",
-            |_cap, _info, _state_handle| {
+            |_cap, _info| {
                 // Tracks the global maximal bid for each capability.
                 let mut maxima = Vec::<(Capability<usize>, usize)>::new();
 

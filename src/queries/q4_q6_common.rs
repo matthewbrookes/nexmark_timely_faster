@@ -20,7 +20,7 @@ pub fn q4_q6_common<S: Scope<Timestamp = usize>>(
         Exchange::new(|b: &Bid| b.auction as u64),
         Exchange::new(|a: &Auction| a.id as u64),
         "Q4 Auction close",
-        |_capability, _info, _state_handle| {
+        |_capability, _info| {
             let mut state: HashMap<_, (Option<_>, Vec<Bid>)> = std::collections::HashMap::new();
             let mut opens = std::collections::BinaryHeap::new();
 

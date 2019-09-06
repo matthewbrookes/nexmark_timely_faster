@@ -30,7 +30,7 @@ pub fn q5<S: Scope<Timestamp = usize>>(
             Exchange::new(|b: &(usize, _)| b.0 as u64),
             "Q5 Accumulate",
             None,
-            move |input, output, notificator, _state_handle| {
+            move |input, output, notificator| {
                 let mut bids_buffer = vec![];
                 input.for_each(|time, data| {
                     data.swap(&mut bids_buffer);
@@ -94,7 +94,7 @@ pub fn q5<S: Scope<Timestamp = usize>>(
         .unary_frontier(
             Exchange::new(|_| 0),
             "Q5 All-Accumulate",
-            |_cap, _info, _state_handle| {
+            |_cap, _info| {
                 let mut hot_items = HashMap::new();
 
                 let mut buffer = Vec::new();
