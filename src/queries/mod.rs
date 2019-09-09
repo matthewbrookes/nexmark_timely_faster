@@ -24,6 +24,21 @@ pub use self::q5::q5;
 pub use self::q6::q6;
 pub use self::q7::q7;
 pub use self::q8::q8;
+use faster_rs::FasterKv;
+
+#[inline(always)]
+fn maybe_refresh_faster(faster: &FasterKv, monotonic_serial_number: &mut u64) {
+    if *monotonic_serial_number % (1 << 4) == 0 {
+        faster.refresh();
+        if *monotonic_serial_number % (1 << 10) == 0 {
+            faster.complete_pending(true);
+        }
+    }
+    if *monotonic_serial_number % (1 << 20) == 0 {
+        println!("Size: {}", faster.size());
+    }
+    *monotonic_serial_number += 1;
+}
 
 pub struct NexmarkInput<'a> {
     pub bids: &'a Rc<EventLink<usize, Bid>>,

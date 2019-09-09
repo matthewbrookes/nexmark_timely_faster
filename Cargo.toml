@@ -14,6 +14,7 @@ serde = "*"
 serde_derive = "*"
 serde_json = "*"
 streaming-harness = { version = "^0.1", features = ["hdrhist-support"] }
+tempfile = "*"
 timely = { git = "https://github.com/matthewbrookes/timely-dataflow.git" }
 
 [dependencies.faster-rs]
