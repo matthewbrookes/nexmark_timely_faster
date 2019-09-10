@@ -41,8 +41,10 @@ pub fn q4_q6_common_managed<S: Scope<Timestamp = usize>>(
         Exchange::new(|a: &Auction| a.id as u64),
         "Q4 Auction close",
         |_capability, _info, state_handle| {
-            let mut state = state_handle.get_managed_map("state");
-            let mut opens = state_handle.get_managed_value("opens");
+            let state_handle1 = state_handle.spawn_new_backend();
+            let state_handle2 = state_handle.spawn_new_backend();
+            let mut state = state_handle1.get_managed_map("state");
+            let mut opens = state_handle2.get_managed_value("opens");
             opens.set(BidsHeap(BinaryHeap::new()));
 
             let mut capability: Option<Capability<usize>> = None;

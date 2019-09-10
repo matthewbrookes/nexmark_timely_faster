@@ -27,8 +27,9 @@ pub fn q6_managed<S: Scope<Timestamp = usize>>(
             Exchange::new(|x: &(usize, usize)| x.0 as u64),
             "Q6 Average",
             |_cap, _info, state_handle| {
+                let state_handle1 = state_handle.spawn_new_backend();
                 // Store bidder -> [prices; 10]
-                let mut state = state_handle.get_managed_map("state");
+                let mut state = state_handle1.get_managed_map("state");
 
                 move |input, output| {
                     input.for_each(|time, data| {

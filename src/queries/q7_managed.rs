@@ -12,6 +12,10 @@ pub fn q7_managed<S: Scope<Timestamp = usize>>(
     scope: &mut S,
     window_size_ns: usize,
 ) -> Stream<S, usize> {
+    let state_handle1 = scope.get_state_handle().spawn_new_backend();
+    let mut pre_reduce_state = state_handle1.get_managed_map("pre-reduce");
+    let state_handle2 = scope.get_state_handle().spawn_new_backend();
+    let mut all_reduce_state = state_handle2.get_managed_map("all-reduce");
     input
         .bids(scope)
         .map(move |b| {
@@ -24,8 +28,7 @@ pub fn q7_managed<S: Scope<Timestamp = usize>>(
             Pipeline,
             "Q7 Pre-Reduce",
             None,
-            move |input, output, notificator, state_handle| {
-                let mut pre_reduce_state = state_handle.get_managed_map("pre-reduce");
+            move |input, output, notificator, _state_handle| {
                 let mut buffer = Vec::new();
                 input.for_each(|time, data| {
                     // Notify at end of epoch
@@ -53,8 +56,7 @@ pub fn q7_managed<S: Scope<Timestamp = usize>>(
             Exchange::new(move |x: &(usize, usize)| (x.0 / window_size_ns) as u64),
             "Q7 All-Reduce",
             None,
-            move |input, output, notificator, state_handle| {
-                let mut all_reduce_state = state_handle.get_managed_map("all-reduce");
+            move |input, output, notificator, _state_handle| {
                 let mut buffer = Vec::new();
                 input.for_each(|time, data| {
                     // Notify at end of epoch

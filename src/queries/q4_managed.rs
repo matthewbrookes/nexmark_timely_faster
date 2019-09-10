@@ -27,7 +27,8 @@ pub fn q4_managed<S: Scope<Timestamp = usize>>(
             "Q4 Average",
             |_cap, _info, state_handle| {
                 // Stores category -> (total, count)
-                let mut state = state_handle.get_managed_map("categories");
+                let state_handle1 = state_handle.spawn_new_backend();
+                let mut state = state_handle1.get_managed_map("categories");
 
                 move |input, output| {
                     input.for_each(|time, data| {

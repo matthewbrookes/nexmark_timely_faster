@@ -32,6 +32,10 @@ pub fn q5_managed<S: Scope<Timestamp = usize>>(
     window_slice_count: usize,
     window_slide_ns: usize,
 ) -> Stream<S, usize> {
+    let state_handle1 = scope.get_state_handle().spawn_new_backend();
+    let mut pre_reduce_state = state_handle1.get_managed_map("state");
+    let state_handle2 = scope.get_state_handle().spawn_new_backend();
+    let mut all_reduce_state = state_handle2.get_managed_map("state");
     input
         .bids(scope)
         .map(move |b| {
@@ -45,8 +49,7 @@ pub fn q5_managed<S: Scope<Timestamp = usize>>(
             Exchange::new(|b: &(usize, _)| b.0 as u64),
             "Q5 Accumulate Per Worker",
             None,
-            move |input, output, notificator, state_handle| {
-                let mut pre_reduce_state = state_handle.get_managed_map("state");
+            move |input, output, notificator, _state_handle| {
                 let mut buffer = Vec::new();
                 input.for_each(|time, data| {
                     // Notify at end of this epoch
@@ -96,8 +99,7 @@ pub fn q5_managed<S: Scope<Timestamp = usize>>(
             Exchange::new(|_| 0),
             "Q5 Accumulate Globally",
             None,
-            move |input, output, notificator, state_handle| {
-                let mut all_reduce_state = state_handle.get_managed_map("state");
+            move |input, output, notificator, _state_handle| {
                 let mut buffer = Vec::new();
                 input.for_each(|time, data| {
                     notificator.notify_at(time.delayed(&(time.time())));

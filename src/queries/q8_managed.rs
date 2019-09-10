@@ -10,6 +10,12 @@ pub fn q8_managed<S: Scope<Timestamp = usize>>(
     scope: &mut S,
     window_size_ns: usize,
 ) -> Stream<S, usize> {
+
+    let state_handle1 = scope.get_state_handle().spawn_new_backend();
+    let state_handle2 = scope.get_state_handle().spawn_new_backend();
+    let mut new_people = state_handle1.get_managed_map("new_people");
+    let mut auctions_state = state_handle2.get_managed_value("auctions");
+
     let auctions = input.auctions(scope).map(|a| (a.seller, a.date_time));
 
     let people = input.auctions(scope).map(|p| (p.id, p.date_time));
@@ -21,9 +27,6 @@ pub fn q8_managed<S: Scope<Timestamp = usize>>(
         "Q8 join",
         None,
         move |input1, input2, output, notificator, state_handle| {
-            let mut new_people = state_handle.get_managed_map("new_people");
-            let mut auctions_state = state_handle.get_managed_value("auctions");
-
             // Notice new people.
             input1.for_each(|time, data| {
                 notificator.notify_at(time.retain());

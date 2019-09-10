@@ -27,9 +27,11 @@ pub fn q3_managed<S: Scope<Timestamp = usize>>(
         Exchange::new(|p: &Person| p.id as u64 / 100),
         "Q3 Join",
         |_capability, _info, state_handle| {
+            let state_handle1 = state_handle.spawn_new_backend();
+            let state_handle2 = state_handle.spawn_new_backend();
             let mut state1: Box<ManagedMap<usize, Vec<Auction>>> =
-                state_handle.get_managed_map("state1");
-            let mut state2: Box<ManagedMap<usize, Person>> = state_handle.get_managed_map("state2");
+                state_handle1.get_managed_map("state1");
+            let mut state2: Box<ManagedMap<usize, Person>> = state_handle2.get_managed_map("state2");
 
             move |input1, input2, output| {
                 // Process each input auction.
