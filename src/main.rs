@@ -4,6 +4,8 @@
 
 extern crate abomonation;
 extern crate clap;
+extern crate env_logger;
+extern crate metrics_runtime;
 extern crate nexmark;
 extern crate rand;
 extern crate streaming_harness;
@@ -18,6 +20,7 @@ const TIME_DILATION: usize = 1;
 
 use clap::{App, Arg};
 
+use metrics_runtime::Receiver;
 use streaming_harness::util::ToNanos;
 
 use timely::dataflow::operators::{Capture, Probe};
@@ -35,6 +38,13 @@ use timely::ExchangeData;
 use nexmark::event::Event;
 use nexmark::queries::{NexmarkInput, NexmarkTimer};
 use timely::dataflow::operators::inspect::Inspect;
+
+use std::time::Duration;
+use std::io::Write;
+use metrics_runtime::exporters::LogExporter;
+use metrics_runtime::observers::YamlBuilder;
+use log::Level;
+use std::fs::File;
 
 #[allow(dead_code)]
 fn verify<S: Scope, T: ExchangeData + Ord + ::std::fmt::Debug>(
@@ -108,6 +118,26 @@ fn main() {
                 .multiple(true)
                 .value_delimiter(" "),
         )
+        .arg(
+            Arg::with_name("metrics")
+                .long("metrics")
+        )
+        .arg(
+            Arg::with_name("print-rss")
+                .long("print-rss")
+        )
+        .arg(
+            Arg::with_name("latency-output")
+                .long("latency-output")
+                .takes_value(true)
+                .required(false)
+        )
+        .arg(
+            Arg::with_name("timeline-output")
+                .long("timeline-output")
+                .takes_value(true)
+                .required(false)
+        )
         .arg(Arg::with_name("timely").multiple(true))
         .get_matches();
     let timely_args = matches
@@ -133,8 +163,34 @@ fn main() {
         .map(String::from)
         .collect();
 
-    // Read and report RSS
-    let statm_reporter_running = nexmark::tools::statm_reporter();
+    let enable_metrics = matches
+        .occurrences_of("metrics") > 0;
+
+    let enable_rss = matches
+        .occurrences_of("print-rss") > 0;
+
+    let latency_output = matches
+        .value_of("latency-output");
+
+    let timeline_output = matches
+        .value_of("timeline-output");
+
+    if enable_metrics {
+        // Collect metrics
+        env_logger::init();
+        let receiver = Receiver::builder()
+            .build()
+            .expect("failed to build receiver");
+        let mut exporter = LogExporter::new(receiver.get_controller(), YamlBuilder::new(), Level::Info, Duration::from_secs(5));
+        receiver.install();
+        std::thread::spawn(move ||exporter.run());
+    }
+
+    let statm_reporter_running = match enable_rss {
+        // Read and report RSS
+        true => Some(nexmark::tools::statm_reporter()),
+        _ => None
+    };
 
     // define a new computational scope, in which to run NEXMark queries
     let timelines: Vec<_> = timely::execute_from_args(
@@ -798,7 +854,10 @@ fn main() {
     .map(|x| x.unwrap())
     .collect();
 
-    statm_reporter_running.store(false, ::std::sync::atomic::Ordering::SeqCst);
+    match statm_reporter_running {
+        Some(statm_reporter_running) => statm_reporter_running.store(false, ::std::sync::atomic::Ordering::SeqCst),
+        _ => {}
+    }
 
     let ::streaming_harness::timeline::Timeline {
         timeline,
@@ -836,14 +895,30 @@ fn main() {
     );
     */
 
-    for (value, prob, count) in latency_metrics.ccdf() {
-        println!("latency_ccdf\t{}\t{}\t{}", value, prob, count);
+    if let Some(output_file) = latency_output {
+        let mut f = File::create(output_file).expect("Cannot open latency output file");
+        for (value, prob, count) in latency_metrics.ccdf() {
+            f.write(format!("latency_ccdf\t{}\t{}\t{}\n",value, prob, count).as_bytes());
+        }
+    } else {
+        for (value, prob, count) in latency_metrics.ccdf() {
+            println!("latency_ccdf\t{}\t{}\t{}", value, prob, count);
+        }
     }
-    println!(
-        "{}",
-        ::streaming_harness::format::format_summary_timeline(
-            "summary_timeline".to_string(),
-            timeline.clone()
-        )
-    );
+
+    if let Some(output_file) = timeline_output {
+        let mut f = File::create(output_file).expect("Cannot open timeline output file");
+        f.write(::streaming_harness::format::format_summary_timeline(
+                "summary_timeline".to_string(),
+                timeline.clone()
+            ).as_bytes());
+    } else {
+        println!(
+            "{}",
+            ::streaming_harness::format::format_summary_timeline(
+                "summary_timeline".to_string(),
+                timeline.clone()
+            )
+        );
+    }
 }
