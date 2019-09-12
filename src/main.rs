@@ -181,7 +181,7 @@ fn main() {
         let receiver = Receiver::builder()
             .build()
             .expect("failed to build receiver");
-        let mut exporter = LogExporter::new(receiver.get_controller(), YamlBuilder::new(), Level::Info, Duration::from_secs(30));
+        let mut exporter = LogExporter::new(receiver.get_controller(), YamlBuilder::new(), Level::Info, Duration::from_nanos(duration_ns));
         receiver.install();
         std::thread::spawn(move ||exporter.run());
     }
