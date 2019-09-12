@@ -18,4 +18,4 @@ serde = "*"
 serde_derive = "*"
 serde_json = "*"
 streaming-harness = { version = "^0.1", features = ["hdrhist-support"] }
-timely = { git = "https://github.com/matthewbrookes/timely-dataflow.git", branch = "state_crate" }
+timely = { git = "https://github.com/matthewbrookes/timely-dataflow.git", branch = "measure-serialisation" }
