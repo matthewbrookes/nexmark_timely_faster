@@ -33,7 +33,13 @@ pub fn q5<S: Scope<Timestamp = usize>>(
         deletions_directory.to_str().unwrap().to_string()
     ).unwrap();
     let mut deletions_store_serial = 0;
-    let mut accumulations = HashMap::new();
+    let accumulations_directory = TempDir::new_in(".").unwrap().into_path();
+    let accumulations = FasterKv::new_u64_store(
+        1 << 15,
+        2 * 1024 * 1024 * 1024,
+        accumulations_directory.to_str().unwrap().to_string()
+    ).unwrap();
+    let mut accumulations_store_serial = 0;
 
     input
         .bids(scope)
@@ -91,10 +97,13 @@ pub fn q5<S: Scope<Timestamp = usize>>(
                     if status == status::PENDING {
                         additions.complete_pending(true);
                     }
+                    maybe_refresh_faster(&additions, &mut additions_store_serial);
                     //if let Some(additions) = additions.remove(&time) {
                     if let Ok(additions) = recv.recv() {
                         for auction in additions.iter() {
-                            *accumulations.entry(*auction).or_insert(0) += 1;
+                            //*accumulations.entry(*auction).or_insert(0) += 1;
+                            accumulations.rmw_u64(*auction, 1, accumulations_store_serial);
+                            maybe_refresh_faster(&accumulations, &mut accumulations_store_serial);
                         }
                         let new_time = time.time() + (window_slice_count * window_slide_ns);
                         //deletions.insert(time.delayed(&new_time), additions);
@@ -108,9 +117,27 @@ pub fn q5<S: Scope<Timestamp = usize>>(
                     if status == status::PENDING {
                         deletions.complete_pending(true);
                     }
+                    maybe_refresh_faster(&deletions, &mut deletions_store_serial);
                     //if let Some(deletions) = deletions.remove(&time) {
                     if let Ok(deletions) = recv.recv() {
                         for auction in deletions {
+                            let (status, recv) = accumulations.read_u64(*auction, accumulations_store_serial);
+                            if status == status::PENDING {
+                                accumulations.complete_pending(true);
+                            }
+                            maybe_refresh_faster(&accumulations, &mut accumulations_store_serial);
+                            match recv.recv() {
+                                Ok(entry) => {
+                                    if entry == 1 {
+                                        accumulations.delete_u64(*auction, accumulations_store_serial);
+                                    } else {
+                                        accumulations.rmw_decrease_u64(*auction, 1, accumulations_store_serial);
+                                    }
+                                    maybe_refresh_faster(&accumulations, &mut accumulations_store_serial);
+                                },
+                                Err(_) => panic!("entry has to exist"),
+                            }
+                            /*
                             use std::collections::hash_map::Entry;
                             match accumulations.entry(*auction) {
                                 Entry::Occupied(mut entry) => {
@@ -121,13 +148,28 @@ pub fn q5<S: Scope<Timestamp = usize>>(
                                 }
                                 _ => panic!("entry has to exist"),
                             }
+                            */
                         }
                     }
+                    let mut highest_count: Option<(u64, u64)> = None;
+                    let iterator = accumulations.get_iterator_u64();
+                    while let Some(record) = iterator.get_next() {
+                        let auction = record.key.unwrap();
+                        let count = record.value.unwrap();
+                        if highest_count.is_none() || count > highest_count.unwrap().0 {
+                            highest_count = Some((count, auction));
+                        }
+                    }
+                    if let Some((count, auction)) = highest_count {
+                        output.session(&time).give((auction as usize, count));
+                    }
+                    /*
                     if let Some((count, auction)) =
                         accumulations.iter().map(|(&a, &c)| (c, a)).max()
                     {
                         output.session(&time).give((auction as usize, count));
                     }
+                    */
                 })
             },
         )
