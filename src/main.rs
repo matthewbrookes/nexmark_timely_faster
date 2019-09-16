@@ -175,15 +175,16 @@ fn main() {
     let timeline_output = matches
         .value_of("timeline-output");
 
+    let mut exporter = None;
+
     if enable_metrics {
         // Collect metrics
         env_logger::init();
         let receiver = Receiver::builder()
             .build()
             .expect("failed to build receiver");
-        let mut exporter = LogExporter::new(receiver.get_controller(), YamlBuilder::new(), Level::Info, Duration::from_nanos(duration_ns));
+        exporter = Some(LogExporter::new(receiver.get_controller(), YamlBuilder::new(), Level::Info, Duration::from_nanos(duration_ns)));
         receiver.install();
-        std::thread::spawn(move ||exporter.run());
     }
 
     let statm_reporter_running = match enable_rss {
@@ -911,5 +912,9 @@ fn main() {
                 timeline.clone()
             )
         );
+    }
+
+    if let Some(mut exporter) = exporter {
+        exporter.turn();
     }
 }
