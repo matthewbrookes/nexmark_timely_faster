@@ -673,9 +673,7 @@ fn main() {
                 // Q8. Monitor new users. Native.
                 if queries.iter().any(|x| *x == "q8") {
                     worker.dataflow::<_, _, _, InMemoryBackend>(|scope, _| {
-                        // Window ticks every 12 seconds.
-                        // NEXMark default is different: ticks every 12h
-                        let window_size_ns = 12 * 1_000_000_000;
+                        let window_size_ns = 12 * 60 * 60 * 1_000_000_000;
                         ::nexmark::queries::q8(
                             &nexmark_input,
                             nexmark_timer,
@@ -689,9 +687,7 @@ fn main() {
                 // Q8. Monitor new users. In Mem.
                 if queries.iter().any(|x| *x == "q8_mem") {
                     worker.dataflow::<_, _, _, InMemoryBackend>(|scope, _| {
-                        // Window ticks every 12 seconds.
-                        // NEXMark default is different: ticks every 12h
-                        let window_size_ns = 12 * 1_000_000_000;
+                        let window_size_ns = 12 * 60 * 60 * 1_000_000_000;
                         ::nexmark::queries::q8_managed(
                             &nexmark_input,
                             nexmark_timer,
@@ -705,9 +701,7 @@ fn main() {
                 // Q8. Monitor new users. FASTER.
                 if queries.iter().any(|x| *x == "q8_faster") {
                     worker.dataflow::<_, _, _, FASTERBackend>(|scope, _| {
-                        // Window ticks every 12 seconds.
-                        // NEXMark default is different: ticks every 12h
-                        let window_size_ns = 12 * 1_000_000_000;
+                        let window_size_ns = 12 * 60 * 60 * 1_000_000_000;
                         ::nexmark::queries::q8_managed(
                             &nexmark_input,
                             nexmark_timer,
@@ -721,9 +715,7 @@ fn main() {
                 // Q8. Monitor new users. RocksDB.
                 if queries.iter().any(|x| *x == "q8_rocksdb") {
                     worker.dataflow::<_, _, _, RocksDBBackend>(|scope, _| {
-                        // Window ticks every 12 seconds.
-                        // NEXMark default is different: ticks every 12h
-                        let window_size_ns = 12 * 1_000_000_000;
+                        let window_size_ns = 12 * 60 * 60 * 1_000_000_000;
                         ::nexmark::queries::q8_managed(
                             &nexmark_input,
                             nexmark_timer,
@@ -737,9 +729,7 @@ fn main() {
                 // Q8. Monitor new users. FASTER In Mem.
                 if queries.iter().any(|x| *x == "q8_faster_in_mem") {
                     worker.dataflow::<_, _, _, FASTERInMemoryBackend>(|scope, _| {
-                        // Window ticks every 12 seconds.
-                        // NEXMark default is different: ticks every 12h
-                        let window_size_ns = 12 * 1_000_000_000;
+                        let window_size_ns = 12 * 60 * 60 * 1_000_000_000;
                         ::nexmark::queries::q8_managed(
                             &nexmark_input,
                             nexmark_timer,
