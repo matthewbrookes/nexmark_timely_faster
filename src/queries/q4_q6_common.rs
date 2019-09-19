@@ -7,6 +7,12 @@ use crate::event::{Auction, Bid};
 
 use crate::queries::{NexmarkInput, NexmarkTimer};
 
+fn is_valid_bid(bid: &Bid, auction: &Auction) -> bool {
+    bid.price >= auction.reserve
+        && auction.date_time <= bid.date_time
+        && bid.date_time < auction.expires
+}
+
 pub fn q4_q6_common<S: Scope<Timestamp = usize>>(
     input: &NexmarkInput,
     nt: NexmarkTimer,
@@ -14,6 +20,94 @@ pub fn q4_q6_common<S: Scope<Timestamp = usize>>(
 ) -> Stream<S, (Auction, Bid)> {
     let bids = input.bids(scope);
     let auctions = input.auctions(scope);
+
+    let mut state: HashMap<_, (Option<_>, Vec<Bid>)> = std::collections::HashMap::new();
+    let mut expirations: HashMap<usize, Vec<usize>> = std::collections::HashMap::new();
+
+
+    bids.binary_notify(
+        &auctions,
+        Exchange::new(|b: &Bid| b.auction as u64),
+        Exchange::new(|a: &Auction| a.id as u64),
+        "Q4 Auction close",
+        None,
+        move |input1, input2, output, notificator| {
+            // Record each bid.
+            // NB: We don't summarize as the max, because we don't know which are valid.
+            input1.for_each(|time, data| {
+                for bid in data.iter().cloned() {
+                    let mut entry = state.entry(bid.auction).or_insert((None, Vec::new()));
+                    if let Some(ref auction) = entry.0 {
+                        debug_assert!(entry.1.len() <= 1);
+                        if is_valid_bid(&bid, auction) {
+                            // bid must fall between auction creation and expiration
+                            if let Some(existing) = entry.1.get(0).cloned() {
+                                if existing.price < bid.price {
+                                    entry.1[0] = bid;
+                                }
+                            } else {
+                                entry.1.push(bid);
+                            }
+                        }
+                    } else {
+                        notificator.notify_at(time.delayed(&nt.from_nexmark_time(bid.date_time)));
+                        let mut expirations_entry = expirations.entry(nt.from_nexmark_time(bid.date_time)).or_insert(Vec::new());
+                        expirations_entry.push(bid.auction);
+                        entry.1.push(bid);
+                    }
+                }
+            });
+
+            // Record each auction.
+            input2.for_each(|time, data| {
+                for auction in data.iter().cloned() {
+                    notificator.notify_at(time.delayed(&nt.from_nexmark_time(auction.expires)));
+                    let mut expirations_entry = expirations.entry(nt.from_nexmark_time(auction.expires)).or_insert(Vec::new());
+                    expirations_entry.push(auction.id);
+                    let mut entry = state.entry(auction.id).or_insert((None, Vec::new()));
+                    debug_assert!(entry.0.is_none());
+                    entry.1.retain(|bid| is_valid_bid(&bid, &auction));
+                    if let Some(bid) = entry.1.iter().max_by_key(|bid| bid.price).cloned() {
+                        entry.1.clear();
+                        entry.1.push(bid);
+                    }
+                    entry.0 = Some(auction);
+                }
+            });
+
+            notificator.for_each(|cap, _, _| {
+                let mut session = output.session(&cap);
+                let mut current_expiration = expirations.remove(cap.time()).expect("Couldn't find in expirations");
+                for auction_id in current_expiration.drain(..) {
+                    let delete =  match state.get_mut(&auction_id) {
+                        None => false,
+                        Some((auction, bids)) => {
+                            match auction {
+                                None => {
+                                    bids.retain(|bid| bid.date_time > nt.to_nexmark_time(*cap.time()));
+                                    bids.is_empty()
+                                },
+                                Some(auction) => {
+                                    if auction.expires == nt.to_nexmark_time(*cap.time()) {
+                                        if let Some(winner) = bids.pop() {
+                                            session.give((auction.clone(), winner));
+                                        }
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                }
+                            }
+                        }
+                    };
+                    if delete {
+                        state.remove(&auction_id);
+                    }
+                }
+            });
+        }
+    )
+        /*
 
     bids.binary_frontier(
         &auctions,
@@ -152,4 +246,5 @@ pub fn q4_q6_common<S: Scope<Timestamp = usize>>(
             }
         },
     )
+    */
 }
