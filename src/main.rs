@@ -360,74 +360,15 @@ fn main() {
                     });
                 }
 
-                // Intermission: Close some auctions. Native.
-                if queries.iter().any(|x| *x == "q4" || *x == "q6") {
-                    worker.dataflow::<_, _, _, InMemoryBackend>(|scope, _| {
-                        ::nexmark::queries::q4_q6_common(&nexmark_input, nexmark_timer, scope)
-                            .capture_into(nexmark_input.closed_auctions.clone());
-                    });
-                }
-
-                // Intermission: Close some auctions. In Mem.
-                if queries.iter().any(|x| *x == "q4_mem" || *x == "q6_mem") {
-                    worker.dataflow::<_, _, _, InMemoryBackend>(|scope, _| {
-                        ::nexmark::queries::q4_q6_common_managed(
-                            &nexmark_input,
-                            nexmark_timer,
-                            scope,
-                        )
-                        .capture_into(nexmark_input.closed_auctions.clone());
-                    });
-                }
-
-                // Intermission: Close some auctions. FASTER.
-                if queries
-                    .iter()
-                    .any(|x| *x == "q4_faster" || *x == "q6_faster")
-                {
-                    worker.dataflow::<_, _, _, FASTERBackend>(|scope, _| {
-                        ::nexmark::queries::q4_q6_common_managed(
-                            &nexmark_input,
-                            nexmark_timer,
-                            scope,
-                        )
-                        .capture_into(nexmark_input.closed_auctions.clone());
-                    });
-                }
-
-                // Intermission: Close some auctions. FASTER.
-                if queries
-                    .iter()
-                    .any(|x| *x == "q4_faster_in_mem" || *x == "q6_faster_in_mem")
-                {
-                    worker.dataflow::<_, _, _, FASTERInMemoryBackend>(|scope, _| {
-                        ::nexmark::queries::q4_q6_common_managed(
-                            &nexmark_input,
-                            nexmark_timer,
-                            scope,
-                        )
-                        .capture_into(nexmark_input.closed_auctions.clone());
-                    });
-                }
-
-                // Intermission: Close some auctions. RocksDB.
-                if queries
-                    .iter()
-                    .any(|x| *x == "q4_rocksdb" || *x == "q6_rocksdb")
-                {
-                    worker.dataflow::<_, _, _, RocksDBBackend>(|scope, _| {
-                        ::nexmark::queries::q4_q6_common_managed(
-                            &nexmark_input,
-                            nexmark_timer,
-                            scope,
-                        )
-                            .capture_into(nexmark_input.closed_auctions.clone());
-                    });
-                }
-
                 // Q4: Find average selling price per category. Native.
                 if queries.iter().any(|x| *x == "q4") {
                     worker.dataflow::<_, _, _, InMemoryBackend>(|scope, _| {
+                        ::nexmark::queries::q4_q6_common_managed(
+                            &nexmark_input,
+                            nexmark_timer,
+                            scope,
+                        )
+                            .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q4(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -436,6 +377,12 @@ fn main() {
                 // Q4: Find average selling price per category. In Mem.
                 if queries.iter().any(|x| *x == "q4_mem") {
                     worker.dataflow::<_, _, _, InMemoryBackend>(|scope, _| {
+                        ::nexmark::queries::q4_q6_common_managed(
+                            &nexmark_input,
+                            nexmark_timer,
+                            scope,
+                        )
+                            .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q4_managed(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -444,6 +391,12 @@ fn main() {
                 // Q4: Find average selling price per category. FASTER.
                 if queries.iter().any(|x| *x == "q4_faster") {
                     worker.dataflow::<_, _, _, FASTERBackend>(|scope, _| {
+                        ::nexmark::queries::q4_q6_common_managed(
+                            &nexmark_input,
+                            nexmark_timer,
+                            scope,
+                        )
+                            .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q4_managed(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -452,6 +405,12 @@ fn main() {
                 // Q4: Find average selling price per category. RocksDB.
                 if queries.iter().any(|x| *x == "q4_rocksdb") {
                     worker.dataflow::<_, _, _, RocksDBBackend>(|scope, _| {
+                        ::nexmark::queries::q4_q6_common_managed(
+                            &nexmark_input,
+                            nexmark_timer,
+                            scope,
+                        )
+                            .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q4_managed(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -460,6 +419,12 @@ fn main() {
                 // Q4: Find average selling price per category. FASTER In Mem.
                 if queries.iter().any(|x| *x == "q4_faster_in_mem") {
                     worker.dataflow::<_, _, _, FASTERInMemoryBackend>(|scope, _| {
+                        ::nexmark::queries::q4_q6_common_managed(
+                            &nexmark_input,
+                            nexmark_timer,
+                            scope,
+                        )
+                            .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q4_managed(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -558,6 +523,12 @@ fn main() {
                 // Q6. Avg selling price per seller. Native.
                 if queries.iter().any(|x| *x == "q6") {
                     worker.dataflow::<_, _, _, InMemoryBackend>(|scope, _| {
+                        ::nexmark::queries::q4_q6_common_managed(
+                            &nexmark_input,
+                            nexmark_timer,
+                            scope,
+                        )
+                            .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q6(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -566,6 +537,12 @@ fn main() {
                 // Q6. Avg selling price per seller. In Mem.
                 if queries.iter().any(|x| *x == "q6_mem") {
                     worker.dataflow::<_, _, _, InMemoryBackend>(|scope, _| {
+                        ::nexmark::queries::q4_q6_common_managed(
+                            &nexmark_input,
+                            nexmark_timer,
+                            scope,
+                        )
+                            .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q6_managed(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -574,6 +551,12 @@ fn main() {
                 // Q6. Avg selling price per seller. FASTER.
                 if queries.iter().any(|x| *x == "q6_faster") {
                     worker.dataflow::<_, _, _, FASTERBackend>(|scope, _| {
+                        ::nexmark::queries::q4_q6_common_managed(
+                            &nexmark_input,
+                            nexmark_timer,
+                            scope,
+                        )
+                            .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q6_managed(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -582,6 +565,12 @@ fn main() {
                 // Q6. Avg selling price per seller. RocksDB.
                 if queries.iter().any(|x| *x == "q6_rocksdb") {
                     worker.dataflow::<_, _, _, RocksDBBackend>(|scope, _| {
+                        ::nexmark::queries::q4_q6_common_managed(
+                            &nexmark_input,
+                            nexmark_timer,
+                            scope,
+                        )
+                            .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q6_managed(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -590,6 +579,12 @@ fn main() {
                 // Q6. Avg selling price per seller. FASTER In Mem.
                 if queries.iter().any(|x| *x == "q6_faster_in_mem") {
                     worker.dataflow::<_, _, _, FASTERInMemoryBackend>(|scope, _| {
+                        ::nexmark::queries::q4_q6_common_managed(
+                            &nexmark_input,
+                            nexmark_timer,
+                            scope,
+                        )
+                            .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q6_managed(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
