@@ -252,24 +252,15 @@ fn main() {
                     });
                 }
 
-
-                // Intermission: Close some auctions. Native.
-                if queries.iter().any(|x| *x == "q4" || *x == "q6") {
-                    worker.dataflow(|scope| {
-                        ::nexmark::queries::q4_q6_common(&nexmark_input, nexmark_timer, scope)
-                            .capture_into(nexmark_input.closed_auctions.clone());
-                    });
-                }
-
-
                 // Q4: Find average selling price per category. Native.
                 if queries.iter().any(|x| *x == "q4") {
                     worker.dataflow(|scope| {
+                        ::nexmark::queries::q4_q6_common(&nexmark_input, nexmark_timer, scope)
+                            .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q4(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
                 }
-
 
                 // Q5. Hot Items. Native.
                 if queries.iter().any(|x| *x == "q5") {
@@ -292,6 +283,8 @@ fn main() {
                 // Q6. Avg selling price per seller. Native.
                 if queries.iter().any(|x| *x == "q6") {
                     worker.dataflow(|scope| {
+                        ::nexmark::queries::q4_q6_common(&nexmark_input, nexmark_timer, scope)
+                            .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q6(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
