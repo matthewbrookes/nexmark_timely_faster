@@ -205,14 +205,14 @@ pub fn q5<S: Scope<Timestamp = usize>>(
                 });
 
                 notificator.for_each(|cap, _, _| {
-                    let (status, recv) = hot_items.read_u64_pair(*cap.time() as u64, hot_items_store_serial);
+                    let (status, recv) =
+                        hot_items.read_u64_pair(*cap.time() as u64, hot_items_store_serial);
                     if status == status::PENDING {
                         hot_items.complete_pending(true);
                     }
                     maybe_refresh_faster(&hot_items, &mut hot_items_store_serial);
                     output.session(&cap).give(*recv.recv().unwrap().0 as usize);
                 });
-
             },
         )
 }

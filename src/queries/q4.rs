@@ -23,7 +23,7 @@ pub fn q4<S: Scope<Timestamp = usize>>(
     let mut aggs_store_serial = 0;
     input
         .closed_auctions(scope)
-        .map(|(a, b)| (a.category, b.price))
+        .map(|(a, (_, b))| (a, b))
         .unary(
             Exchange::new(|x: &(usize, usize)| x.0 as u64),
             "Q4 Average",

@@ -208,7 +208,7 @@ dependencies = [
 [[package]]
 name = "faster-rs"
 version = "0.8.6"
-source = "git+https://github.com/matthewbrookes/faster-rs?branch=nexmark#17492cfef1851e18e30038ddd6aebf5837dd21e3"
+source = "git+https://github.com/matthewbrookes/faster-rs?branch=nexmark#2424f42f0f94969f68f5515f8c70a7da8d7de840"
 dependencies = [
  "bincode 1.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.62 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -284,7 +284,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "libfaster-sys"
 version = "0.8.4"
-source = "git+https://github.com/matthewbrookes/faster-rs?branch=nexmark#17492cfef1851e18e30038ddd6aebf5837dd21e3"
+source = "git+https://github.com/matthewbrookes/faster-rs?branch=nexmark#2424f42f0f94969f68f5515f8c70a7da8d7de840"
 dependencies = [
  "bindgen 0.50.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cmake 0.1.42 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -21,29 +21,26 @@ pub fn q6<S: Scope<Timestamp = usize>>(
     )
     .unwrap();
     let mut aggs_store_serial = 0;
-    input
-        .closed_auctions(scope)
-        .map(|(_a, b)| (b.bidder, b.price))
-        .unary(
-            Exchange::new(|x: &(usize, usize)| x.0 as u64),
-            "Q6 Average",
-            |_cap, _info| {
-                move |input, output| {
-                    input.for_each(|time, data| {
-                        let mut session = output.session(&time);
-                        for (bidder, price) in data.iter().cloned() {
-                            aggs.rmw_ten_elements(bidder as u64, price, aggs_store_serial);
-                            maybe_refresh_faster(&aggs, &mut aggs_store_serial);
-                            let (res, recv) =
-                                aggs.read_ten_elements_average(bidder as u64, aggs_store_serial);
-                            if res == status::PENDING {
-                                aggs.complete_pending(true);
-                            }
-                            maybe_refresh_faster(&aggs, &mut aggs_store_serial);
-                            session.give((bidder, recv.recv().unwrap()));
+    input.closed_auctions(scope).map(|(_a, b)| b).unary(
+        Exchange::new(|x: &(usize, usize)| x.0 as u64),
+        "Q6 Average",
+        |_cap, _info| {
+            move |input, output| {
+                input.for_each(|time, data| {
+                    let mut session = output.session(&time);
+                    for (bidder, price) in data.iter().cloned() {
+                        aggs.rmw_ten_elements(bidder as u64, price, aggs_store_serial);
+                        maybe_refresh_faster(&aggs, &mut aggs_store_serial);
+                        let (res, recv) =
+                            aggs.read_ten_elements_average(bidder as u64, aggs_store_serial);
+                        if res == status::PENDING {
+                            aggs.complete_pending(true);
                         }
-                    });
-                }
-            },
-        )
+                        maybe_refresh_faster(&aggs, &mut aggs_store_serial);
+                        session.give((bidder, recv.recv().unwrap()));
+                    }
+                });
+            }
+        },
+    )
 }

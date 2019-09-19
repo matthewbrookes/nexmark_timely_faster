@@ -44,7 +44,7 @@ pub struct NexmarkInput<'a> {
     pub bids: &'a Rc<EventLink<usize, Bid>>,
     pub auctions: &'a Rc<EventLink<usize, Auction>>,
     pub people: &'a Rc<EventLink<usize, Person>>,
-    pub closed_auctions: &'a Rc<EventLink<usize, (Auction, Bid)>>,
+    pub closed_auctions: &'a Rc<EventLink<usize, (usize, (usize, usize))>>,
     pub closed_auctions_flex: &'a Rc<EventLink<usize, (Auction, Bid)>>,
 }
 
@@ -64,7 +64,7 @@ impl<'a> NexmarkInput<'a> {
     pub fn closed_auctions<S: Scope<Timestamp = usize>>(
         &self,
         scope: &mut S,
-    ) -> Stream<S, (Auction, Bid)> {
+    ) -> Stream<S, (usize, (usize, usize))> {
         Some(self.closed_auctions.clone()).replay_into(scope)
     }
 }
