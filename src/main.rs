@@ -30,21 +30,19 @@ use timely::dataflow::channels::pact::Pipeline;
 use timely::dataflow::operators::Operator;
 use timely::dataflow::Scope;
 use timely::dataflow::Stream;
-use timely::state::backends::{
-    FASTERBackend, FASTERInMemoryBackend, InMemoryBackend, InMemoryNativeBackend, RocksDBBackend
-};
+use timely::state::backends::{FASTERBackend, InMemoryBackend, RocksDBBackend};
 use timely::ExchangeData;
 
 use nexmark::event::Event;
 use nexmark::queries::{NexmarkInput, NexmarkTimer};
 use timely::dataflow::operators::inspect::Inspect;
 
-use std::time::Duration;
-use std::io::Write;
+use log::Level;
 use metrics_runtime::exporters::LogExporter;
 use metrics_runtime::observers::YamlBuilder;
-use log::Level;
 use std::fs::File;
+use std::io::Write;
+use std::time::Duration;
 
 #[allow(dead_code)]
 fn verify<S: Scope, T: ExchangeData + Ord + ::std::fmt::Debug>(
@@ -118,25 +116,19 @@ fn main() {
                 .multiple(true)
                 .value_delimiter(" "),
         )
-        .arg(
-            Arg::with_name("metrics")
-                .long("metrics")
-        )
-        .arg(
-            Arg::with_name("print-rss")
-                .long("print-rss")
-        )
+        .arg(Arg::with_name("metrics").long("metrics"))
+        .arg(Arg::with_name("print-rss").long("print-rss"))
         .arg(
             Arg::with_name("latency-output")
                 .long("latency-output")
                 .takes_value(true)
-                .required(false)
+                .required(false),
         )
         .arg(
             Arg::with_name("timeline-output")
                 .long("timeline-output")
                 .takes_value(true)
-                .required(false)
+                .required(false),
         )
         .arg(Arg::with_name("timely").multiple(true))
         .get_matches();
@@ -163,17 +155,13 @@ fn main() {
         .map(String::from)
         .collect();
 
-    let enable_metrics = matches
-        .occurrences_of("metrics") > 0;
+    let enable_metrics = matches.occurrences_of("metrics") > 0;
 
-    let enable_rss = matches
-        .occurrences_of("print-rss") > 0;
+    let enable_rss = matches.occurrences_of("print-rss") > 0;
 
-    let latency_output = matches
-        .value_of("latency-output");
+    let latency_output = matches.value_of("latency-output");
 
-    let timeline_output = matches
-        .value_of("timeline-output");
+    let timeline_output = matches.value_of("timeline-output");
 
     let mut exporter = None;
 
@@ -183,20 +171,24 @@ fn main() {
         let receiver = Receiver::builder()
             .build()
             .expect("failed to build receiver");
-        exporter = Some(LogExporter::new(receiver.get_controller(), YamlBuilder::new(), Level::Info, Duration::from_nanos(duration_ns)));
+        exporter = Some(LogExporter::new(
+            receiver.controller(),
+            YamlBuilder::new(),
+            Level::Info,
+            Duration::from_nanos(duration_ns),
+        ));
         receiver.install();
     }
 
     let statm_reporter_running = match enable_rss {
         // Read and report RSS
         true => Some(nexmark::tools::statm_reporter()),
-        _ => None
+        _ => None,
     };
 
     // define a new computational scope, in which to run NEXMark queries
-    let timelines: Vec<_> = timely::execute_from_args(
-        timely_args.into_iter(),
-        move |worker, node_state_handle| {
+    let timelines: Vec<_> =
+        timely::execute_from_args(timely_args.into_iter(), move |worker, node_state_handle| {
             let peers = worker.peers();
             let index = worker.index();
 
@@ -329,33 +321,9 @@ fn main() {
                     });
                 }
 
-                // Q3: Join some auctions. FASTER One Instance Per Node.
-                if queries.iter().any(|x| *x == "q3_faster_node") {
-                    worker.dataflow::<_, _, _, InMemoryBackend>(|scope, _| {
-                        ::nexmark::queries::q3_managed_node(&nexmark_input, nexmark_timer, scope, &node_state_handle)
-                            .probe_with(&mut probe);
-                    });
-                }
-
-                // Q3: Join some auctions. FASTER In Memory.
-                if queries.iter().any(|x| *x == "q3_faster_in_mem") {
-                    worker.dataflow::<_, _, _, FASTERInMemoryBackend>(|scope, _| {
-                        ::nexmark::queries::q3_managed(&nexmark_input, nexmark_timer, scope)
-                            .probe_with(&mut probe);
-                    });
-                }
-
                 // Q3: Join some auctions. In Mem.
                 if queries.iter().any(|x| *x == "q3_mem") {
                     worker.dataflow::<_, _, _, InMemoryBackend>(|scope, _| {
-                        ::nexmark::queries::q3_managed(&nexmark_input, nexmark_timer, scope)
-                            .probe_with(&mut probe);
-                    });
-                }
-
-                // Q3: Join some auctions. In Mem Native.
-                if queries.iter().any(|x| *x == "q3_mem_native") {
-                    worker.dataflow::<_, _, _, InMemoryNativeBackend>(|scope, _| {
                         ::nexmark::queries::q3_managed(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -369,7 +337,7 @@ fn main() {
                             nexmark_timer,
                             scope,
                         )
-                            .capture_into(nexmark_input.closed_auctions.clone());
+                        .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q4(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -383,7 +351,7 @@ fn main() {
                             nexmark_timer,
                             scope,
                         )
-                            .capture_into(nexmark_input.closed_auctions.clone());
+                        .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q4_managed(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -397,7 +365,7 @@ fn main() {
                             nexmark_timer,
                             scope,
                         )
-                            .capture_into(nexmark_input.closed_auctions.clone());
+                        .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q4_managed(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -411,21 +379,7 @@ fn main() {
                             nexmark_timer,
                             scope,
                         )
-                            .capture_into(nexmark_input.closed_auctions.clone());
-                        ::nexmark::queries::q4_managed(&nexmark_input, nexmark_timer, scope)
-                            .probe_with(&mut probe);
-                    });
-                }
-
-                // Q4: Find average selling price per category. FASTER In Mem.
-                if queries.iter().any(|x| *x == "q4_faster_in_mem") {
-                    worker.dataflow::<_, _, _, FASTERInMemoryBackend>(|scope, _| {
-                        ::nexmark::queries::q4_q6_common_managed(
-                            &nexmark_input,
-                            nexmark_timer,
-                            scope,
-                        )
-                            .capture_into(nexmark_input.closed_auctions.clone());
+                        .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q4_managed(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -499,24 +453,6 @@ fn main() {
                             window_slice_count,
                             window_slide_ns,
                         )
-                            .probe_with(&mut probe);
-                    });
-                }
-
-                // Q5. Hot Items. FASTER In Mem.
-                if queries.iter().any(|x| *x == "q5_faster_in_mem") {
-                    // 60s windows, ticking in 1s intervals
-                    // NEXMark default is 60 minutes, ticking in one minute intervals
-                    let window_slice_count = 60;
-                    let window_slide_ns = 1_000_000_000;
-                    worker.dataflow::<_, _, _, FASTERInMemoryBackend>(|scope, _| {
-                        ::nexmark::queries::q5_managed(
-                            &nexmark_input,
-                            nexmark_timer,
-                            scope,
-                            window_slice_count,
-                            window_slide_ns,
-                        )
                         .probe_with(&mut probe);
                     });
                 }
@@ -529,7 +465,7 @@ fn main() {
                             nexmark_timer,
                             scope,
                         )
-                            .capture_into(nexmark_input.closed_auctions.clone());
+                        .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q6(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -543,7 +479,7 @@ fn main() {
                             nexmark_timer,
                             scope,
                         )
-                            .capture_into(nexmark_input.closed_auctions.clone());
+                        .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q6_managed(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -557,7 +493,7 @@ fn main() {
                             nexmark_timer,
                             scope,
                         )
-                            .capture_into(nexmark_input.closed_auctions.clone());
+                        .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q6_managed(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -571,21 +507,7 @@ fn main() {
                             nexmark_timer,
                             scope,
                         )
-                            .capture_into(nexmark_input.closed_auctions.clone());
-                        ::nexmark::queries::q6_managed(&nexmark_input, nexmark_timer, scope)
-                            .probe_with(&mut probe);
-                    });
-                }
-
-                // Q6. Avg selling price per seller. FASTER In Mem.
-                if queries.iter().any(|x| *x == "q6_faster_in_mem") {
-                    worker.dataflow::<_, _, _, FASTERInMemoryBackend>(|scope, _| {
-                        ::nexmark::queries::q4_q6_common_managed(
-                            &nexmark_input,
-                            nexmark_timer,
-                            scope,
-                        )
-                            .capture_into(nexmark_input.closed_auctions.clone());
+                        .capture_into(nexmark_input.closed_auctions.clone());
                         ::nexmark::queries::q6_managed(&nexmark_input, nexmark_timer, scope)
                             .probe_with(&mut probe);
                     });
@@ -651,22 +573,6 @@ fn main() {
                             scope,
                             window_size_ns,
                         )
-                            .probe_with(&mut probe);
-                    });
-                }
-
-                // Q7. Highest Bid. FASTER In Mem.
-                if queries.iter().any(|x| *x == "q7_faster_in_mem") {
-                    worker.dataflow::<_, _, _, FASTERInMemoryBackend>(|scope, _| {
-                        // Window ticks every 10 seconds.
-                        // NEXMark default is different: ticks every 60s
-                        let window_size_ns = 10_000_000_000;
-                        ::nexmark::queries::q7_managed(
-                            &nexmark_input,
-                            nexmark_timer,
-                            scope,
-                            window_size_ns,
-                        )
                         .probe_with(&mut probe);
                     });
                 }
@@ -716,20 +622,6 @@ fn main() {
                 // Q8. Monitor new users. RocksDB.
                 if queries.iter().any(|x| *x == "q8_rocksdb") {
                     worker.dataflow::<_, _, _, RocksDBBackend>(|scope, _| {
-                        let window_size_ns = 12 * 60 * 60 * 1_000_000_000;
-                        ::nexmark::queries::q8_managed(
-                            &nexmark_input,
-                            nexmark_timer,
-                            scope,
-                            window_size_ns,
-                        )
-                            .probe_with(&mut probe);
-                    });
-                }
-
-                // Q8. Monitor new users. FASTER In Mem.
-                if queries.iter().any(|x| *x == "q8_faster_in_mem") {
-                    worker.dataflow::<_, _, _, FASTERInMemoryBackend>(|scope, _| {
                         let window_size_ns = 12 * 60 * 60 * 1_000_000_000;
                         ::nexmark::queries::q8_managed(
                             &nexmark_input,
@@ -838,16 +730,17 @@ fn main() {
             }
 
             output_metric_collector.into_inner()
-        },
-    )
-    .expect("unsuccessful execution")
-    .join()
-    .into_iter()
-    .map(|x| x.unwrap())
-    .collect();
+        })
+        .expect("unsuccessful execution")
+        .join()
+        .into_iter()
+        .map(|x| x.unwrap())
+        .collect();
 
     match statm_reporter_running {
-        Some(statm_reporter_running) => statm_reporter_running.store(false, ::std::sync::atomic::Ordering::SeqCst),
+        Some(statm_reporter_running) => {
+            statm_reporter_running.store(false, ::std::sync::atomic::Ordering::SeqCst)
+        }
         _ => {}
     }
 
@@ -890,7 +783,7 @@ fn main() {
     if let Some(output_file) = latency_output {
         let mut f = File::create(output_file).expect("Cannot open latency output file");
         for (value, prob, count) in latency_metrics.ccdf() {
-            f.write(format!("latency_ccdf\t{}\t{}\t{}\n",value, prob, count).as_bytes());
+            f.write(format!("latency_ccdf\t{}\t{}\t{}\n", value, prob, count).as_bytes());
         }
     } else {
         for (value, prob, count) in latency_metrics.ccdf() {
@@ -900,10 +793,13 @@ fn main() {
 
     if let Some(output_file) = timeline_output {
         let mut f = File::create(output_file).expect("Cannot open timeline output file");
-        f.write(::streaming_harness::format::format_summary_timeline(
+        f.write(
+            ::streaming_harness::format::format_summary_timeline(
                 "summary_timeline".to_string(),
-                timeline.clone()
-            ).as_bytes());
+                timeline.clone(),
+            )
+            .as_bytes(),
+        );
     } else {
         println!(
             "{}",

@@ -3,12 +3,12 @@ use timely::dataflow::operators::{Map, Operator};
 use timely::dataflow::{Scope, Stream};
 
 use crate::queries::{NexmarkInput, NexmarkTimer};
-use faster_rs::FasterRmw;
+use timely::state::Rmw;
 
 #[derive(Serialize, Deserialize)]
 struct SumWithCount(usize, usize);
 
-impl FasterRmw for SumWithCount {
+impl Rmw for SumWithCount {
     fn rmw(&self, modification: Self) -> Self {
         SumWithCount(self.0 + modification.0, self.1 + modification.1)
     }

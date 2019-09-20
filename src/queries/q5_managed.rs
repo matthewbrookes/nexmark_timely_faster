@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 use timely::dataflow::channels::pact::Exchange;
 use timely::dataflow::{Scope, Stream};
+use timely::state::Rmw;
 
 use crate::queries::{NexmarkInput, NexmarkTimer};
-use faster_rs::FasterRmw;
 use timely::dataflow::operators::generic::operator::Operator;
 use timely::dataflow::operators::map::Map;
 
 #[derive(Deserialize, Serialize)]
 struct Counts(HashMap<usize, usize>);
 
-impl FasterRmw for Counts {
+impl Rmw for Counts {
     fn rmw(&self, _modification: Self) -> Self {
         panic!("RMW on Counts not allowed!");
     }
@@ -19,7 +19,7 @@ impl FasterRmw for Counts {
 #[derive(Deserialize, Serialize)]
 struct AuctionBids((usize, usize));
 
-impl FasterRmw for AuctionBids {
+impl Rmw for AuctionBids {
     fn rmw(&self, _modification: Self) -> Self {
         panic!("RMW on AuctionBids not allowed!");
     }

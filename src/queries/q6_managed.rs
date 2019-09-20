@@ -1,15 +1,15 @@
-use faster_rs::FasterRmw;
 use std::collections::VecDeque;
 use timely::dataflow::channels::pact::Exchange;
 use timely::dataflow::operators::{Map, Operator};
 use timely::dataflow::{Scope, Stream};
+use timely::state::Rmw;
 
 use crate::queries::{NexmarkInput, NexmarkTimer};
 
 #[derive(Serialize, Deserialize)]
 struct Prices(VecDeque<usize>);
 
-impl FasterRmw for Prices {
+impl Rmw for Prices {
     fn rmw(&self, _modification: Self) -> Self {
         panic!("RMW on VecDeque<T> is unsafe");
     }

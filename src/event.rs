@@ -1,8 +1,8 @@
-use faster_rs::FasterRmw;
 use rand::rngs::SmallRng;
 use rand::seq::SliceRandom;
 use rand::Rng;
 use std::cmp::{max, min};
+use timely::state::Rmw;
 
 use crate::config::NEXMarkConfig;
 
@@ -75,7 +75,7 @@ impl ::std::ops::Sub for Date {
     }
 }
 
-impl FasterRmw for Date {
+impl Rmw for Date {
     fn rmw(&self, modification: Self) -> Self {
         Date(self.0 + modification.0)
     }
@@ -182,7 +182,7 @@ pub struct Person {
     pub date_time: Date,
 }
 
-impl FasterRmw for Person {
+impl Rmw for Person {
     fn rmw(&self, _modification: Person) -> Person {
         unimplemented!();
     }

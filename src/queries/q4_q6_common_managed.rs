@@ -5,14 +5,14 @@ use timely::dataflow::{Scope, Stream};
 use crate::event::{Auction, Bid, Date};
 
 use crate::queries::{NexmarkInput, NexmarkTimer};
-use faster_rs::FasterRmw;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
+use timely::state::Rmw;
 
 #[derive(Serialize, Deserialize)]
 struct AuctionBids(Option<Auction>, Vec<Bid>);
 
-impl FasterRmw for AuctionBids {
+impl Rmw for AuctionBids {
     fn rmw(&self, _modification: Self) -> Self {
         unimplemented!()
     }
@@ -21,7 +21,7 @@ impl FasterRmw for AuctionBids {
 #[derive(Serialize, Deserialize)]
 struct BidsHeap(BinaryHeap<(Reverse<Date>, usize)>);
 
-impl FasterRmw for BidsHeap {
+impl Rmw for BidsHeap {
     fn rmw(&self, _modification: Self) -> Self {
         unimplemented!()
     }
