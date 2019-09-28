@@ -172,7 +172,7 @@ fn main() {
             .build()
             .expect("failed to build receiver");
         exporter = Some(LogExporter::new(
-            receiver.controller(),
+            receiver.get_controller(),
             YamlBuilder::new(),
             Level::Info,
             Duration::from_nanos(duration_ns),
@@ -691,19 +691,13 @@ fn main() {
             let mut last_ns = 0;
 
             loop {
-                /*
                 let elapsed_ns = timer.elapsed().to_nanos();
                 let wait_ns = last_ns;
                 let target_ns = (elapsed_ns + 1) / 1_000_000 * 1_000_000;
                 last_ns = target_ns;
-                */
-                let target_ns = last_ns + 1_000_000;
-                last_ns = target_ns;
 
-                /*
                 output_metric_collector
                     .acknowledge_while(elapsed_ns, |t| !probe.less_than(&(t as usize + count)));
-                */
 
                 if input.is_none() {
                     break;
