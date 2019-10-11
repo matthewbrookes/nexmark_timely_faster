@@ -28,8 +28,8 @@ pub fn q3<S: Scope<Timestamp = usize>>(
 
     let people_dir = TempDir::new_in(".").expect("Unable to create FASTER directory");
     let people_store = FasterKv::new_person_store(
-        1 << 15,
-        1 * 1024 * 1024 * 1024,
+        1 << 24,
+        4 * 1024 * 1024 * 1024,
         people_dir.into_path().to_str().unwrap().to_string(),
     )
     .expect("Couldn't initialise FASTER");
@@ -38,8 +38,8 @@ pub fn q3<S: Scope<Timestamp = usize>>(
 
     let auctions_dir = TempDir::new_in(".").expect("Unable to create FASTER directory");
     let auctions_store = FasterKv::new_auctions_store(
-        1 << 15,
-        1 * 1024 * 1024 * 1024,
+        1 << 24,
+        4 * 1024 * 1024 * 1024,
         auctions_dir.into_path().to_str().unwrap().to_string(),
     )
     .expect("Couldn't initialise FASTER");
