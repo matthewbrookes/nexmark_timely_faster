@@ -780,6 +780,7 @@ fn main() {
     );
     */
 
+    /*
     if let Some(output_file) = latency_output {
         let mut f = File::create(output_file).expect("Cannot open latency output file");
         for (value, prob, count) in latency_metrics.ccdf() {
@@ -809,6 +810,7 @@ fn main() {
             )
         );
     }
+    */
 
     if let Some(mut exporter) = exporter {
         exporter.turn();
