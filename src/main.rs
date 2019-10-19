@@ -285,6 +285,24 @@ fn main() {
                 });
             }
 
+            // Q5. Hot Items. Index.
+            if queries.iter().any(|x| *x == "q5_index") {
+                // 60s windows, ticking in 1s intervals
+                // NEXMark default is 60 minutes, ticking in one minute intervals
+                let window_slice_count = 60;
+                let window_slide_ns = 1_000_000_000;
+                worker.dataflow(|scope| {
+                    ::nexmark::queries::q5_index(
+                        &nexmark_input,
+                        nexmark_timer,
+                        scope,
+                        window_slice_count,
+                        window_slide_ns,
+                    )
+                        .probe_with(&mut probe);
+                });
+            }
+
             // Q6. Avg selling price per seller. Native.
             if queries.iter().any(|x| *x == "q6") {
                 worker.dataflow(|scope| {
