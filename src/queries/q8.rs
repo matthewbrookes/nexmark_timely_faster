@@ -43,9 +43,6 @@ pub fn q8<S: Scope<Timestamp = usize>>(
         "Q8 join",
         None,
         move |input1, input2, output, notificator| {
-            //let mut new_people: HashMap<usize, usize> = HashMap::new();
-            //let mut auctions_state: HashMap<usize, Vec<(usize, Date)>> = HashMap::new();
-
             // Notice new people.
             input1.for_each(|time, data| {
                 notificator.notify_at(time.retain());
@@ -60,14 +57,8 @@ pub fn q8<S: Scope<Timestamp = usize>>(
                 let ts = *time.time();
                 let mut data_vec = vec![];
                 data.swap(&mut data_vec);
-                /*
-                let mut stored_auctions = auctions_state.remove(&ts).unwrap_or(Vec::new());
-                stored_auctions.extend(data_vec);
-                auctions_state.insert(ts, stored_auctions);
-                */
                 auctions_state.rmw_u64_pairs(ts as u64, data_vec, auctions_state_store_serial);
                 super::maybe_refresh_faster(&auctions_state, &mut auctions_state_store_serial);
-                //auctions_state.entry(ts).or_insert(Vec::new()).append(&mut data_vec);
                 notificator.notify_at(time.retain());
             });
 
@@ -111,6 +102,7 @@ pub fn q8<S: Scope<Timestamp = usize>>(
                 }
                 // Update entries
                 index_state = to_keep;
+                //println!("Index state: {}", index_state.len())
             });
         },
     )
