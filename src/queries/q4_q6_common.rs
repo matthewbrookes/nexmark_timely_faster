@@ -67,7 +67,7 @@ pub fn q4_q6_common<S: Scope<Timestamp = usize>>(
                             if let Some(auction) = entry.0 {
                                 if is_valid_bid(&bid, auction) {
                                     // bid must fall between auction creation and expiration
-                                    if let Some(existing) = entry.1.get(0).cloned() {
+                                    if let Some(existing) = entry.1.get(0) {
                                         if existing.price < bid.price {
                                             entry.1[0] = CBid {
                                                 price: bid.price,
@@ -128,7 +128,7 @@ pub fn q4_q6_common<S: Scope<Timestamp = usize>>(
                     }
                     maybe_refresh_faster(&state, &mut state_serial);
                     let (_, bids) = recv.recv().unwrap();
-                    if let Some(bid) = bids.iter().max_by_key(|bid| bid.price).cloned() {
+                    if let Some(bid) = bids.iter().max_by_key(|bid| bid.price) {
                         bids[0] = CBid {
                             price: bid.price,
                             date_time: bid.date_time,
