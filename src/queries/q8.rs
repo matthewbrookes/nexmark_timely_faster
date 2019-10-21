@@ -21,7 +21,7 @@ pub fn q8<S: Scope<Timestamp = usize>>(
     let new_people_directory = TempDir::new_in(".").unwrap().into_path();
     let new_people = FasterKv::new_u64_store(
         1 << 24,
-        2 * 1024 * 1024 * 1024,
+        4 * 1024 * 1024 * 1024,
         new_people_directory.to_str().unwrap().to_string(),
     )
         .unwrap();
@@ -29,7 +29,7 @@ pub fn q8<S: Scope<Timestamp = usize>>(
     let auctions_state_directory = TempDir::new_in(".").unwrap().into_path();
     let auctions_state = FasterKv::new_u64_pairs_store(
         1 << 24,
-        2 * 1024 * 1024 * 1024,
+        4 * 1024 * 1024 * 1024,
         auctions_state_directory.to_str().unwrap().to_string(),
     )
         .unwrap();
